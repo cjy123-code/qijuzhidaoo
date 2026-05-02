@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的收藏 - 栖居之道</title>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- 样式 -->
+    <link rel="stylesheet" href="css/layout.css">
+    <style>
+        /* 收藏页面特定样式 */
+        .favorites-header-card {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            border-radius: var(--radius-card);
+            padding: 32px;
+            margin-bottom: 24px;
+            
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .favorites-header-card::before {
+            content: "❤️";
+            font-size: 200px;
+            opacity: 0.1;
+            position: absolute;
+            right: -40px;
+            top: -40px;
+        }
+
+        .favorites-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin: 0 0 12px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 1;
+        }
+
+        .favorites-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .favorites-count {
+            display: inline-block;
+            margin-top: 16px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 24px;
+            border-radius: 24px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+        }
+
+        .house-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .house-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-card);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .house-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        .house-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--accent);
+        }
+
+        .house-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .house-name {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 0;
+        }
+
+        .climate-tag {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: #F4EFE6;
+            color: #5A3A2A;
+            border: 1px solid var(--accent);
+        }
+
+        .house-desc {
+            color: var(--text-dark);
+            line-height: 1.7;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .house-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 12px;
+            background: #FEF9EF;
+            border-radius: 12px;
+        }
+
+        .metric-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .house-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-view {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #4A7A3E;
+            transform: translateY(-2px);
+        }
+
+        .btn-remove {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            background: #DC143C;
+            color: white;
+        }
+
+        .btn-remove:hover {
+            background: #B71C1C;
+            transform: translateY(-2px);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--card-bg);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-md);
+            border: 2px dashed var(--accent);
+        }
+
+        .empty-state-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0 0 12px 0;
+        }
+
+        .empty-state-text {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin: 0 0 24px 0;
+            line-height: 1.6;
+        }
+
+        .empty-state-btn {
+            padding: 14px 36px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1rem;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .empty-state-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #FEF9EF;
+            border-radius: var(--radius-card);
+            border: 1px solid var(--accent);
+        }
+
+        .filter-btn {
+            padding: 8px 18px;
+            border-radius: 20px;
+            border: 1px solid var(--accent);
+            background: white;
+            color: var(--text-dark);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .filter-btn:hover {
+            background: var(--accent);
+            color: #5A3A2A;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: var(--transition);
+        }
+
+        .back-link:hover {
+            color: var(--primary-dark);
+            transform: translateX(-4px);
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 顶部导航栏 -->
+    <div class="hero-nav">
+        <div class="nav-header">
+            <div class="logo-area">
+                <span class="logo-icon">🏮</span>
+                <h1>栖居之道</h1>
+                <span class="title-sub">气候适应性智慧 · 我的收藏</span>
+            </div>
+            <div class="nav-links">
+                <span id="user-info"></span>
+                <button id="login-btn" class="login-btn" onclick="showLoginModal()">登录/注册</button>
+                <button id="logout-btn" class="logout-btn" style="display: none;" onclick="logout()">退出</button>
+                <button id="favorites-btn" class="favorites-btn" style="display: none;" onclick="window.location.href='favorites.html'">我的收藏</button>
+            </div>
+        </div>
+        <div class="nav-tabs">
+            <a href="index.html" class="nav-tab">📊 总览</a>
+            <a href="houses.html" class="nav-tab">🏘️ 民居库</a>
+            <a href="map.html" class="nav-tab">🌍 气候分析</a>
+            <a href="lab.html" class="nav-tab">🧪 实验室</a>
+            <a href="tools.html" class="nav-tab">🧰 工具箱</a>
+            <a href="profile.html" class="nav-tab">👤 个人中心</a>
+        </div>
+        <div class="intro-section">
+            <div class="intro-text">
+                <p>"<strong>有朋自远方来，不亦乐乎</strong> —— 收藏你喜爱的传统民居。"</p>
+                <p class="quote">在这里管理你收藏的民居，随时回顾它们的建筑智慧。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 三栏布局 -->
+    <div class="main-layout">
+        <!-- 左侧边栏 -->
+        <aside class="left-sidebar">
+            <div class="sidebar-card">
+                <div class="sidebar-title">🔍 筛选</div>
+                <div class="timeline-axis" style="margin-top: 8px;">
+                    <div class="timeline-btn active" data-filter="all">🏠 全部收藏</div>
+                    <div class="timeline-btn" data-filter="严寒区">❄️ 严寒区</div>
+                    <div class="timeline-btn" data-filter="寒冷区">🍂 寒冷区</div>
+                    <div class="timeline-btn" data-filter="夏热冬冷区">🌿 夏热冬冷区</div>
+                    <div class="timeline-btn" data-filter="夏热冬暖区">☀️ 夏热冬暖区</div>
+                    <div class="timeline-btn" data-filter="温和区">🌸 温和区</div>
+                </div>
+            </div>
+
+            <div class="sidebar-card">
+                <div class="sidebar-title">📊 收藏统计</div>
+                <div id="statsContainer" style="padding: 8px 0;">
+                    <!-- 统计将通过JS填充 -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- 中间主内容区 -->
+        <main class="main-content">
+            <!-- 页面头部 -->
+            <div class="favorites-header-card">
+                <h2 class="favorites-title">❤️ 我的收藏</h2>
+                <p class="favorites-subtitle">你收藏的传统民居</p>
+                <div class="favorites-count" id="favoritesCount">0 处民居</div>
+            </div>
+
+            <!-- 民居网格 -->
+            <div id="favoritesGrid">
+                <!-- 内容将通过JS填充 -->
+            </div>
+        </main>
+
+        <!-- 右侧边栏 -->
+        <aside class="right-sidebar">
+            <div class="ranking-card">
+                <div class="ranking-title">💡 推荐收藏</div>
+                <div id="recommendations" class="ranking-list">
+                    <!-- 推荐将通过JS填充 -->
+                </div>
+            </div>
+
+            <div class="ranking-card">
+                <div class="ranking-title">🎯 探索建议</div>
+                <div style="padding: 16px; background: linear-gradient(135deg, #FEF9EF, #F4EFE6); border-radius: 16px;">
+                    <div style="font-weight: 700; color: var(--primary); margin-bottom: 8px;">还没有收藏？</div>
+                    <p style="color: var(--text-dark); font-size: 0.85rem; line-height: 1.6; margin-bottom: 12px;">
+                        去民居库浏览，点击心形按钮收藏你喜欢的民居！
+                    </p>
+                    <button class="toolbar-btn" style="width: 100%;" onclick="window.location.href='houses.html'">去探索 →</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="site-footer">
+        <p>🏮 栖居之道 —— 中国古代民居的气候适应性智慧图谱</p>
+        <p>©2026 中国大学生计算机设计大赛 | 云南大学 信息学院</p>
+    </footer>
+</div>
+
+<!-- 返回顶部 -->
+<button id="backToTop" title="返回顶部">↑</button>
+
+<!-- Toast通知 -->
+<div id="toast" class="toast"></div>
+
+<!-- 登录模态框 -->
+<div id="login-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modal-title">用户登录</h2>
+        <form id="auth-form">
+            <div class="form-group">
+                <label for="email">邮箱：</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码：</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" id="auth-submit-btn" class="modal-btn">登录</button>
+        </form>
+        <p id="auth-toggle" style="text-align: center; margin-top: 16px; color: var(--text-dark);">
+            还没有账号？<a href="#" onclick="toggleAuthMode(); return false;" style="color: var(--primary); text-decoration: none; font-weight: 600;">立即注册</a>
+        </p>
+    </div>
+</div>
+
+<!-- 脚本 -->
+<script src="js/shared.js"></script>
+<script>
+let currentFilter = 'all';
+
+function getClimateColor(climate) {
+    const colors = { '严寒区':'#4A6FA5', '寒冷区':'#C8C6C6', '夏热冬冷区':'#6A994E', '夏热冬暖区':'#E28A55', '温和区':'#E8CFF3' };
+    return colors[climate] || '#888';
+}
+
+function renderFavorites() {
+    const favoriteHouses = allHouses.filter(h => userFavorites.has(h.name));
+    let filteredHouses = favoriteHouses;
+
+    if (currentFilter !== 'all') {
+        filteredHouses = favoriteHouses.filter(h => h.climate === currentFilter);
+    }
+
+    document.getElementById('favoritesCount').textContent = favoriteHouses.length + ' 处民居';
+
+    if (filteredHouses.length === 0) {
+        document.getElementById('favoritesGrid').innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">🏚️</div>
+                <h3 class="empty-state-title">${currentFilter === 'all' ? '还没有收藏' : '该气候区暂无收藏'}</h3>
+                <p class="empty-state-text">
+                    ${currentFilter === 'all' ? '去民居库探索，收藏你喜欢的传统民居吧！' : '看看其他气候区的民居，或者去民居库探索更多。'}
+                </p>
+                <button class="empty-state-btn" onclick="window.location.href='houses.html'">🏘️ 去民居库</button>
+            </div>
+        `;
+    } else {
+        document.getElementById('favoritesGrid').innerHTML = `
+            <div class="house-grid">
+                ${filteredHouses.map(house => `
+                    <div class="house-card">
+                        <div class="house-card-header">
+                            <h3 class="house-name">${house.name}</h3>
+                            <span class="climate-tag" style="background: ${getClimateColor(house.climate)}20; border-color: ${getClimateColor(house.climate)};">${house.climate}</span>
+                        </div>
+                        <p class="house-desc">${house.desc}</p>
+                        <div class="house-metrics">
+                            <div class="metric">
+                                <div class="metric-value">${house.wall}mm</div>
+                                <div class="metric-label">墙体厚度</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">${house.pitch}°</div>
+                                <div class="metric-label">屋顶坡度</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">${house.ratio}</div>
+                                <div class="metric-label">窗墙比</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                            <span style="font-size: 0.75rem; padding: 4px 8px; background: #F0FAF0; border-radius: 8px;">🔥 ${house.scores.保温} 保温</span>
+                            <span style="font-size: 0.75rem; padding: 4px 8px; background: #F0FAF0; border-radius: 8px;">🌡️ ${house.scores.隔热} 隔热</span>
+                            <span style="font-size: 0.75rem; padding: 4px 8px; background: #F0FAF0; border-radius: 8px;">🌬️ ${house.scores.通风} 通风</span>
+                        </div>
+                        <div class="house-actions">
+                            <button class="btn-view" onclick="window.location.href='houses.html'">👁️ 查看详情</button>
+                            <button class="btn-remove" onclick="removeFavorite('${house.name}')">💔 取消收藏</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    const climateCounts = {};
+    favoriteHouses.forEach(h => {
+        climateCounts[h.climate] = (climateCounts[h.climate] || 0) + 1;
+    });
+
+    document.getElementById('statsContainer').innerHTML = `
+        ${Object.entries(climateCounts).map(([climate, count]) => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed #E8E0D3;">
+                <span style="font-weight: 500; color: var(--text-dark);">${climate}</span>
+                <span style="background: ${getClimateColor(climate)}20; color: ${getClimateColor(climate)}; padding: 4px 12px; border-radius: 12px; font-weight: 700;">${count}</span>
+            </div>
+        `).join('')}
+        ${Object.keys(climateCounts).length === 0 ? '<div style="text-align: center; padding: 20px; color: var(--text-muted);">暂无数据</div>' : ''}
+    `;
+
+    const recommendations = allHouses.filter(h => !userFavorites.has(h.name)).slice(0, 4);
+    document.getElementById('recommendations').innerHTML = recommendations.map((house, idx) => `
+        <div class="ranking-item" onclick="window.location.href='houses.html'">
+            <div class="ranking-number" style="background: ${getClimateColor(house.climate)};">${idx + 1}</div>
+            <div class="ranking-info">
+                <div class="ranking-name">${house.name}</div>
+                <div class="ranking-value">${house.climate}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function removeFavorite(houseName) {
+    if (confirm(`确定要取消收藏「${houseName}」吗？`)) {
+        userFavorites.delete(houseName);
+        saveUserFavorites();
+        renderFavorites();
+        showToast('已取消收藏', 'success');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    renderFavorites();
+
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            renderFavorites();
+        });
+    });
+
+    auth.onAuthStateChanged(() => {
+        setTimeout(() => {
+            renderFavorites();
+        }, 100);
+    });
+});
+</script>
+</body>
+</html>

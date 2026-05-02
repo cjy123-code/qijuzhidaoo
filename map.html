@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>栖居之道 · 气候分析</title>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/js/china.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- 样式 -->
+    <link rel="stylesheet" href="css/layout.css">
+    <style>
+        /* 气候分析特定样式 */
+        .heatmap-controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 16px;
+            background: #FEF9EF;
+            border-radius: var(--radius-card);
+            border: 1px solid #EADBB0;
+            margin-bottom: 24px;
+        }
+
+        .heatmap-btn {
+            padding: 10px 20px;
+            border-radius: 24px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .heatmap-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .heatmap-btn.active {
+            background: var(--accent);
+            color: #5A2A1F;
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .climate-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-card);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+
+        .climate-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .climate-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .climate-card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0;
+        }
+
+        .climate-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .climate-stat {
+            background: #F4EFE6;
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .climate-stat-value {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .climate-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .climate-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .climate-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed #EADBB0;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .climate-list-item:hover {
+            background: #FEF9EF;
+            padding-left: 8px;
+            border-radius: 8px;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 350px;
+        }
+
+        @media (max-width: 1000px) {
+            .chart-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 顶部导航栏 -->
+    <div class="hero-nav">
+        <div class="nav-header">
+            <div class="logo-area">
+                <span class="logo-icon">🏮</span>
+                <h1>栖居之道</h1>
+                <span class="title-sub">气候适应性智慧 · 气候分析</span>
+            </div>
+            <div class="nav-links">
+                <span id="user-info"></span>
+                <button id="login-btn" class="login-btn" onclick="showLoginModal()">登录/注册</button>
+                <button id="logout-btn" class="logout-btn" style="display: none;" onclick="logout()">退出</button>
+                <button id="favorites-btn" class="favorites-btn" style="display: none;" onclick="window.location.href='favorites.html'">我的收藏</button>
+            </div>
+        </div>
+        <div class="nav-tabs">
+            <a href="index.html" class="nav-tab">📊 总览</a>
+            <a href="houses.html" class="nav-tab">🏘️ 民居库</a>
+            <a href="map.html" class="nav-tab active">🌍 气候分析</a>
+            <a href="lab.html" class="nav-tab">🧪 实验室</a>
+            <a href="tools.html" class="nav-tab">🧰 工具箱</a>
+            <a href="profile.html" class="nav-tab">👤 个人中心</a>
+        </div>
+        <div class="intro-section">
+            <div class="intro-text">
+                <p>"<strong>一方水土一方建筑</strong> —— 气候塑造了建筑的形态与智慧。"</p>
+                <p class="quote">通过热力图、统计分析，深入了解不同气候区民居的适应性策略。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 三栏布局 -->
+    <div class="main-layout">
+        <!-- 左侧边栏 -->
+        <aside class="left-sidebar">
+            <div class="sidebar-card">
+                <div class="sidebar-title">🎨 热力图模式</div>
+                <div class="heatmap-controls">
+                    <button class="heatmap-btn active" data-mode="temp">🌡️ 年均温</button>
+                    <button class="heatmap-btn" data-mode="precip">💧 年降水</button>
+                    <button class="heatmap-btn" data-mode="wall">🧱 墙体厚度</button>
+                    <button class="heatmap-btn" data-mode="none">📍 关闭</button>
+                </div>
+            </div>
+
+            <div class="sidebar-card">
+                <div class="sidebar-title">📊 气候区概览</div>
+                <div id="climateOverview">
+                    <!-- 气候区概览将通过JS填充 -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- 中间主内容区 -->
+        <main class="main-content">
+            <!-- 地图区域 -->
+            <div class="content-card">
+                <div class="card-header">🗺️ 气候热力图</div>
+                <div class="card-content" style="padding: 12px;">
+                    <div id="mainMap" style="width: 100%; height: 450px;"></div>
+                </div>
+            </div>
+
+            <!-- 图表行 -->
+            <div class="chart-row">
+                <div class="content-card">
+                    <div class="card-header">📈 温度与墙体厚度关系</div>
+                    <div class="card-content" style="padding: 12px;">
+                        <div id="tempWallChart" class="chart-container"></div>
+                    </div>
+                </div>
+                <div class="content-card">
+                    <div class="card-header">📊 降水与屋顶坡度关系</div>
+                    <div class="card-content" style="padding: 12px;">
+                        <div id="precipPitchChart" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 雷达图对比 -->
+            <div class="content-card">
+                <div class="card-header">⭐ 各气候区综合评分对比</div>
+                <div class="card-content" style="padding: 12px;">
+                    <div id="climateRadarChart" class="chart-container"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 右侧边栏 -->
+        <aside class="right-sidebar">
+            <div class="ranking-card">
+                <div class="ranking-title">🏆 气候区分布</div>
+                <div id="climateRanking">
+                    <!-- 气候区排行将通过JS填充 -->
+                </div>
+            </div>
+
+            <div class="ranking-card">
+                <div class="ranking-title">📋 气候区详情</div>
+                <div id="climateDetail">
+                    <p style="color: #888; text-align: center; padding: 20px;">点击地图或列表查看气候区详情</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="site-footer">
+        <p>🏮 栖居之道 —— 中国古代民居的气候适应性智慧图谱</p>
+        <p>©2026 中国大学生计算机设计大赛 | 云南大学 信息学院</p>
+    </footer>
+</div>
+
+<!-- 返回顶部 -->
+<button id="backToTop" title="返回顶部">↑</button>
+
+<!-- Toast通知 -->
+<div id="toast" class="toast"></div>
+
+<!-- 登录模态框 -->
+<div id="login-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modal-title">用户登录</h2>
+        <form id="auth-form">
+            <div class="form-group">
+                <label for="email">邮箱：</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码：</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" id="auth-submit-btn" class="modal-btn">登录</button>
+        </form>
+        <p id="auth-toggle" style="text-align: center; margin-top: 16px; color: var(--text-dark);">
+            还没有账号？<a href="#" onclick="toggleAuthMode(); return false;" style="color: var(--primary); text-decoration: none; font-weight: 600;">立即注册</a>
+        </p>
+    </div>
+</div>
+
+<!-- 脚本 -->
+<script src="js/shared.js"></script>
+<script>
+let mainMap, tempWallChart, precipPitchChart, climateRadarChart;
+let currentHeatmapMode = 'temp';
+const climateColors = { '严寒区':'#4A6FA5', '寒冷区':'#C8C6C6', '夏热冬冷区':'#6A994E', '夏热冬暖区':'#E28A55', '温和区':'#E8CFF3' };
+
+function getClimateData() {
+    const climateData = {};
+    allHouses.forEach(house => {
+        if (!climateData[house.climate]) {
+            climateData[house.climate] = {
+                houses: [],
+                avgTemp: 0,
+                avgPrecip: 0,
+                avgWall: 0,
+                avgPitch: 0,
+                avgRatio: 0,
+                scores: {保温:0, 隔热:0, 通风:0, 防潮:0, 采光:0}
+            };
+        }
+        climateData[house.climate].houses.push(house);
+    });
+
+    Object.keys(climateData).forEach(climate => {
+        const data = climateData[climate];
+        const count = data.houses.length;
+        data.avgTemp = (data.houses.reduce((s, h) => s + h.temp, 0) / count).toFixed(1);
+        data.avgPrecip = (data.houses.reduce((s, h) => s + h.precip, 0) / count).toFixed(0);
+        data.avgWall = (data.houses.reduce((s, h) => s + h.wall, 0) / count).toFixed(0);
+        data.avgPitch = (data.houses.reduce((s, h) => s + h.pitch, 0) / count).toFixed(1);
+        data.avgRatio = (data.houses.reduce((s, h) => s + h.ratio, 0) / count).toFixed(2);
+        ['保温','隔热','通风','防潮','采光'].forEach(key => {
+            data.scores[key] = (data.houses.reduce((s, h) => s + h.scores[key], 0) / count).toFixed(1);
+        });
+    });
+
+    return climateData;
+}
+
+function renderClimateOverview() {
+    const climateData = getClimateData();
+    const container = document.getElementById('climateOverview');
+    container.innerHTML = Object.entries(climateData).map(([climate, data]) => `
+        <div style="background: ${climateColors[climate]}10; padding: 12px; border-radius: 12px; margin-bottom: 12px; border-left: 4px solid ${climateColors[climate]}; cursor: pointer;" onclick="showClimateDetail('${climate}')">
+            <div style="font-weight: 700; color: var(--primary); margin-bottom: 4px;">${climate}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">${data.houses.length} 种民居</div>
+            <div style="display: flex; gap: 12px; margin-top: 8px; font-size: 0.75rem;">
+                <span>🌡️ ${data.avgTemp}°C</span>
+                <span>💧 ${data.avgPrecip}mm</span>
+                <span>🧱 ${data.avgWall}mm</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderClimateRanking() {
+    const climateData = getClimateData();
+    const sorted = Object.entries(climateData).sort((a, b) => b[1].houses.length - a[1].houses.length);
+
+    document.getElementById('climateRanking').innerHTML = sorted.map(([climate, data], idx) => {
+        let numberClass = '';
+        if (idx === 0) numberClass = 'gold';
+        else if (idx === 1) numberClass = 'silver';
+        else if (idx === 2) numberClass = 'bronze';
+        return `
+            <div class="ranking-item" onclick="showClimateDetail('${climate}')">
+                <div class="ranking-number ${numberClass}" style="background: ${climateColors[climate]}; color: white;">${idx + 1}</div>
+                <div class="ranking-info">
+                    <div class="ranking-name">${climate}</div>
+                    <div class="ranking-value">${data.houses.length} 种民居</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function showClimateDetail(climate) {
+    const climateData = getClimateData();
+    const data = climateData[climate];
+    if (!data) return;
+
+    document.getElementById('climateDetail').innerHTML = `
+        <div style="padding: 8px 0;">
+            <h3 style="color: var(--primary); margin: 0 0 16px 0; border-bottom: 2px solid var(--accent); padding-bottom: 8px;">${climate}</h3>
+            <div class="climate-stats">
+                <div class="climate-stat">
+                    <div class="climate-stat-value">${data.houses.length}</div>
+                    <div class="climate-stat-label">民居种类</div>
+                </div>
+                <div class="climate-stat">
+                    <div class="climate-stat-value">${data.avgTemp}°</div>
+                    <div class="climate-stat-label">平均温度</div>
+                </div>
+                <div class="climate-stat">
+                    <div class="climate-stat-value">${data.avgPrecip}</div>
+                    <div class="climate-stat-label">平均降水</div>
+                </div>
+            </div>
+            <div style="background: #F4EFE6; padding: 12px; border-radius: 12px; margin-bottom: 12px;">
+                <div style="font-weight: 600; color: var(--primary); margin-bottom: 8px;">建筑特征</div>
+                <div style="font-size: 0.85rem; color: var(--text-dark);">
+                    <div>🧱 平均墙体厚度: ${data.avgWall}mm</div>
+                    <div>📐 平均屋顶坡度: ${data.avgPitch}°</div>
+                    <div>🪟 平均窗墙比: ${data.avgRatio}</div>
+                </div>
+            </div>
+            <div style="background: #F0FAF0; padding: 12px; border-radius: 12px;">
+                <div style="font-weight: 600; color: var(--secondary); margin-bottom: 8px;">综合评分</div>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; font-size: 0.75rem; text-align: center;">
+                    <div style="background: white; padding: 8px; border-radius: 8px;">🔥 ${data.scores.保温}</div>
+                    <div style="background: white; padding: 8px; border-radius: 8px;">🌡️ ${data.scores.隔热}</div>
+                    <div style="background: white; padding: 8px; border-radius: 8px;">🌬️ ${data.scores.通风}</div>
+                    <div style="background: white; padding: 8px; border-radius: 8px;">💧 ${data.scores.防潮}</div>
+                    <div style="background: white; padding: 8px; border-radius: 8px;">☀️ ${data.scores.采光}</div>
+                </div>
+            </div>
+            <div style="margin-top: 12px;">
+                <div style="font-weight: 600; color: var(--primary); margin-bottom: 8px;">代表民居</div>
+                <div class="climate-list">
+                    ${data.houses.slice(0, 3).map(h => `
+                        <div class="climate-list-item" onclick="window.location.href='houses.html'">
+                            <span style="font-weight: 500; color: var(--text-dark);">${h.name}</span>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">→</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderMainMap() {
+    const modeLabels = {'temp': '年均温', 'precip': '年降水', 'wall': '墙体厚度'};
+    const modeUnits = {'temp': '°C', 'precip': 'mm', 'wall': 'mm'};
+    
+    const mapOption = {
+        title: {text: '', left: 'center'},
+        tooltip: {
+            trigger: 'item',
+            formatter: function(params) {
+                if (params.seriesType === 'scatter' || params.seriesType === 'effectScatter') {
+                    return `<strong>${params.name}</strong><br>
+                        🏠 气候区: ${params.data.climateZone}<br>
+                        🌡️ 年均温: ${params.data.temp}°C<br>
+                        💧 年降水: ${params.data.precip}mm<br>
+                        🧱 墙体厚度: ${params.data.wall}mm`;
+                }
+                return params.name;
+            }
+        },
+        visualMap: currentHeatmapMode !== 'none' ? {
+            min: currentHeatmapMode === 'temp' ? 0 : currentHeatmapMode === 'precip' ? 300 : 50,
+            max: currentHeatmapMode === 'temp' ? 25 : currentHeatmapMode === 'precip' ? 2000 : 1200,
+            left: 'left',
+            top: 'bottom',
+            text: ['高', '低'],
+            calculable: true,
+            inRange: {
+                color: currentHeatmapMode === 'temp' ? ['#50a3ba', '#eac736', '#d94e5d'] :
+                       currentHeatmapMode === 'precip' ? ['#d5e4f9', '#2e79c1'] :
+                       ['#f1e9ce', '#8d5524']
+            },
+            textStyle: {color: '#5A3A2A'}
+        } : null,
+        geo: {
+            map: 'china',
+            roam: true,
+            zoom: 1.2,
+            itemStyle: {borderColor: '#B87C4F', areaColor: '#F3E9D2', borderWidth: 2},
+            emphasis: {itemStyle: {areaColor: '#EEE4D4', shadowColor: 'rgba(0,0,0,0.2)', shadowBlur: 10}}
+        },
+        series: []
+    };
+
+    const scatterData = allHouses.map(h => ({
+        name: h.name,
+        value: [...h.coords, currentHeatmapMode === 'temp' ? h.temp :
+                currentHeatmapMode === 'precip' ? h.precip :
+                currentHeatmapMode === 'wall' ? h.wall : 0],
+        climateZone: h.climate,
+        temp: h.temp,
+        precip: h.precip,
+        wall: h.wall,
+        itemStyle: {color: climateColors[h.climate]}
+    }));
+
+    if (currentHeatmapMode !== 'none') {
+        const heatmapData = allHouses.map(h => [
+            h.coords[0],
+            h.coords[1],
+            currentHeatmapMode === 'temp' ? h.temp :
+            currentHeatmapMode === 'precip' ? h.precip : h.wall
+        ]);
+
+        mapOption.series.push({
+            name: modeLabels[currentHeatmapMode],
+            type: 'heatmap',
+            coordinateSystem: 'geo',
+            data: heatmapData,
+            blurSize: 18,
+            pointSize: 20,
+            min: currentHeatmapMode === 'temp' ? 0 : currentHeatmapMode === 'precip' ? 300 : 50,
+            max: currentHeatmapMode === 'temp' ? 25 : currentHeatmapMode === 'precip' ? 2000 : 1200
+        });
+    }
+
+    mapOption.series.push({
+        name: '民居点位',
+        type: 'effectScatter',
+        coordinateSystem: 'geo',
+        data: scatterData,
+        symbolSize: 12,
+        rippleEffect: {brushType: 'stroke', period: 3, scale: 2.5},
+        itemStyle: {borderColor: '#FFF', borderWidth: 2, shadowColor: 'rgba(0,0,0,0.3)', shadowBlur: 5}
+    });
+
+    mainMap.setOption(mapOption);
+}
+
+function renderTempWallChart() {
+    // 计算趋势线
+    const n = allHouses.length;
+    const sumX = allHouses.reduce((s, h) => s + h.temp, 0);
+    const sumY = allHouses.reduce((s, h) => s + h.wall, 0);
+    const sumXY = allHouses.reduce((s, h) => s + h.temp * h.wall, 0);
+    const sumXX = allHouses.reduce((s, h) => s + h.temp * h.temp, 0);
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    
+    const minTemp = Math.min(...allHouses.map(h => h.temp));
+    const maxTemp = Math.max(...allHouses.map(h => h.temp));
+    
+    tempWallChart.setOption({
+        tooltip: {
+            trigger: 'item',
+            formatter: function(params) {
+                if (params.seriesType === 'line') return `趋势线显示：温度越❄️，墙体越🧱厚`;
+                const h = allHouses[params.dataIndex];
+                return `<strong>${h.name}</strong><br>
+                    🌡️ 年均温: ${h.temp}°C<br>
+                    🧱 墙体厚度: ${h.wall}mm<br>
+                    🏠 气候区: ${h.climate}`;
+            }
+        },
+        legend: {data: ['民居分布', '趋势线'], left: 'center', bottom: '0'},
+        grid: {containLabel: true, left: '10%', right: '10%', top: '10%', bottom: '20%'},
+        xAxis: {type: 'value', name: '年均温 (°C)', nameTextStyle: {fontSize: 12, fontWeight: 'bold'}},
+        yAxis: {type: 'value', name: '墙体厚度 (mm)', nameTextStyle: {fontSize: 12, fontWeight: 'bold'}},
+        series: [
+            {
+                name: '民居分布',
+                type: 'scatter',
+                symbolSize: 14,
+                data: allHouses.map((h, i) => [h.temp, h.wall]),
+                itemStyle: {
+                    color: function(params) {return climateColors[allHouses[params.dataIndex].climate];},
+                    borderColor: '#FFF',
+                    borderWidth: 2,
+                    shadowColor: 'rgba(0,0,0,0.2)',
+                    shadowBlur: 4
+                }
+            },
+            {
+                name: '趋势线',
+                type: 'line',
+                data: [
+                    [minTemp, slope * minTemp + intercept],
+                    [maxTemp, slope * maxTemp + intercept]
+                ],
+                lineStyle: {color: '#C0392B', width: 3, type: 'dashed'},
+                symbol: 'none'
+            }
+        ]
+    });
+}
+
+function renderPrecipPitchChart() {
+    // 计算趋势线
+    const n = allHouses.length;
+    const sumX = allHouses.reduce((s, h) => s + h.precip, 0);
+    const sumY = allHouses.reduce((s, h) => s + h.pitch, 0);
+    const sumXY = allHouses.reduce((s, h) => s + h.precip * h.pitch, 0);
+    const sumXX = allHouses.reduce((s, h) => s + h.precip * h.precip, 0);
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    
+    const minPrecip = Math.min(...allHouses.map(h => h.precip));
+    const maxPrecip = Math.max(...allHouses.map(h => h.precip));
+    
+    precipPitchChart.setOption({
+        tooltip: {
+            trigger: 'item',
+            formatter: function(params) {
+                if (params.seriesType === 'line') return `趋势线显示：降水越💧多，坡度越📐陡`;
+                const h = allHouses[params.dataIndex];
+                return `<strong>${h.name}</strong><br>
+                    💧 年降水: ${h.precip}mm<br>
+                    📐 屋顶坡度: ${h.pitch}°<br>
+                    🏠 气候区: ${h.climate}`;
+            }
+        },
+        legend: {data: ['民居分布', '趋势线'], left: 'center', bottom: '0'},
+        grid: {containLabel: true, left: '10%', right: '10%', top: '10%', bottom: '20%'},
+        xAxis: {type: 'value', name: '年降水 (mm)', nameTextStyle: {fontSize: 12, fontWeight: 'bold'}},
+        yAxis: {type: 'value', name: '屋顶坡度 (°)', nameTextStyle: {fontSize: 12, fontWeight: 'bold'}},
+        series: [
+            {
+                name: '民居分布',
+                type: 'scatter',
+                symbolSize: 14,
+                data: allHouses.map((h, i) => [h.precip, h.pitch]),
+                itemStyle: {
+                    color: function(params) {return climateColors[allHouses[params.dataIndex].climate];},
+                    borderColor: '#FFF',
+                    borderWidth: 2,
+                    shadowColor: 'rgba(0,0,0,0.2)',
+                    shadowBlur: 4
+                }
+            },
+            {
+                name: '趋势线',
+                type: 'line',
+                data: [
+                    [minPrecip, slope * minPrecip + intercept],
+                    [maxPrecip, slope * maxPrecip + intercept]
+                ],
+                lineStyle: {color: '#6A994E', width: 3, type: 'dashed'},
+                symbol: 'none'
+            }
+        ]
+    });
+}
+
+function renderClimateRadarChart() {
+    const climateData = getClimateData();
+    const radarData = Object.entries(climateData).map(([climate, data]) => ({
+        name: climate,
+        value: [
+            parseFloat(data.scores.保温),
+            parseFloat(data.scores.隔热),
+            parseFloat(data.scores.通风),
+            parseFloat(data.scores.防潮),
+            parseFloat(data.scores.采光)
+        ],
+        lineStyle: {color: climateColors[climate], width: 3},
+        areaStyle: {color: climateColors[climate] + '40'},
+        itemStyle: {color: climateColors[climate]}
+    }));
+
+    climateRadarChart.setOption({
+        tooltip: {
+            trigger: 'item',
+            formatter: function(params) {
+                let result = `<strong>${params.name}</strong><br/>`;
+                const indicators = ['🔥保温', '🌡️隔热', '🌬️通风', '💧防潮', '☀️采光'];
+                params.value.forEach((val, i) => {
+                    result += `${indicators[i]}: ${val}分<br/>`;
+                });
+                return result;
+            }
+        },
+        legend: {orient: 'vertical', left: 'left', type: 'scroll', pageIconColor: '#6A994E', textStyle: {fontSize: 11}},
+        radar: {
+            indicator: [
+                {name: '🔥保温', max: 10},
+                {name: '🌡️隔热', max: 10},
+                {name: '🌬️通风', max: 10},
+                {name: '💧防潮', max: 10},
+                {name: '☀️采光', max: 10}
+            ],
+            shape: 'polygon',
+            splitNumber: 5,
+            axisName: {textStyle: {fontSize: 13, fontWeight: 'bold', color: '#5A3A2A'}},
+            splitArea: {areaStyle: {color: ['#FEF9EF', '#F4EFE6', '#FEF9EF', '#F4EFE6', '#FEF9EF']}},
+            center: ['60%', '50%'],
+            radius: '65%'
+        },
+        series: [{type: 'radar', data: radarData, symbolSize: 5, symbol: 'circle'}]
+    });
+}
+
+function initCharts() {
+    mainMap = echarts.init(document.getElementById('mainMap'));
+    tempWallChart = echarts.init(document.getElementById('tempWallChart'));
+    precipPitchChart = echarts.init(document.getElementById('precipPitchChart'));
+    climateRadarChart = echarts.init(document.getElementById('climateRadarChart'));
+
+    renderMainMap();
+    renderTempWallChart();
+    renderPrecipPitchChart();
+    renderClimateRadarChart();
+
+    window.addEventListener('resize', () => {
+        mainMap.resize();
+        tempWallChart.resize();
+        precipPitchChart.resize();
+        climateRadarChart.resize();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    renderClimateOverview();
+    renderClimateRanking();
+    initCharts();
+
+    document.querySelectorAll('.heatmap-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.heatmap-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentHeatmapMode = btn.dataset.mode;
+            renderMainMap();
+            showToast(`已切换到${btn.textContent}模式`, 'success');
+        });
+    });
+});
+</script>
+</body>
+</html>

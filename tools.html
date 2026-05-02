@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>栖居之道 · 工具箱</title>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/dist/echarts.min.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- 样式 -->
+    <link rel="stylesheet" href="css/layout.css">
+    <style>
+        /* 工具箱特定样式 */
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .tool-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-card);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--accent);
+        }
+
+        .tool-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        .tool-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0 0 8px 0;
+        }
+
+        .tool-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .tool-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tool-tag {
+            padding: 4px 10px;
+            background: #F4EFE6;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: var(--text-dark);
+        }
+
+        .simulation-panel {
+            background: var(--card-bg);
+            border-radius: var(--radius-card);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+        }
+
+        .simulation-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0 0 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .simulation-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .control-group {
+            background: #FEF9EF;
+            padding: 16px;
+            border-radius: 16px;
+        }
+
+        .control-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .control-select, .control-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .control-select:focus, .control-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.1);
+        }
+
+        .simulation-result {
+            background: linear-gradient(135deg, #F4EFE6, #FEF9EF);
+            padding: 20px;
+            border-radius: 20px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .result-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 8px 0;
+        }
+
+        .result-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .result-desc {
+            margin-top: 12px;
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .comparison-item {
+            background: white;
+            padding: 16px;
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        .comparison-name {
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .comparison-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--secondary);
+        }
+
+        .comparison-unit {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .resource-item {
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            background: #FEF9EF;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .resource-item:hover {
+            background: #F4EFE6;
+            transform: translateX(4px);
+        }
+
+        .resource-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
+        }
+
+        .resource-content {
+            flex: 1;
+        }
+
+        .resource-title {
+            font-weight: 700;
+            color: var(--primary);
+            margin: 0 0 4px 0;
+        }
+
+        .resource-desc {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        .resource-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--secondary);
+            color: white;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 顶部导航栏 -->
+    <div class="hero-nav">
+        <div class="nav-header">
+            <div class="logo-area">
+                <span class="logo-icon">🏮</span>
+                <h1>栖居之道</h1>
+                <span class="title-sub">气候适应性智慧 · 工具箱</span>
+            </div>
+            <div class="nav-links">
+                <span id="user-info"></span>
+                <button id="login-btn" class="login-btn" onclick="showLoginModal()">登录/注册</button>
+                <button id="logout-btn" class="logout-btn" style="display: none;" onclick="logout()">退出</button>
+                <button id="favorites-btn" class="favorites-btn" style="display: none;" onclick="window.location.href='favorites.html'">我的收藏</button>
+            </div>
+        </div>
+        <div class="nav-tabs">
+            <a href="index.html" class="nav-tab">📊 总览</a>
+            <a href="houses.html" class="nav-tab">🏘️ 民居库</a>
+            <a href="map.html" class="nav-tab">🌍 气候分析</a>
+            <a href="lab.html" class="nav-tab">🧪 实验室</a>
+            <a href="tools.html" class="nav-tab active">🧰 工具箱</a>
+            <a href="profile.html" class="nav-tab">👤 个人中心</a>
+        </div>
+        <div class="intro-section">
+            <div class="intro-text">
+                <p>"<strong>工欲善其事，必先利其器</strong> —— 数据工具帮你更好地理解建筑智慧。"</p>
+                <p class="quote">使用仿真、对比、计算等工具，深入探索传统民居的气候适应性设计。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 三栏布局 -->
+    <div class="main-layout">
+        <!-- 左侧边栏 -->
+        <aside class="left-sidebar">
+            <div class="sidebar-card">
+                <div class="sidebar-title">🧭 功能导航</div>
+                <div class="timeline-axis">
+                    <div class="timeline-btn active" data-tool="simulation">🏺 窑洞模拟</div>
+                    <div class="timeline-btn" data-tool="comparison">🌍 南北对比</div>
+                    <div class="timeline-btn" data-tool="calculator">💰 能耗估算</div>
+                    <div class="timeline-btn" data-tool="resources">📚 学习资源</div>
+                </div>
+            </div>
+
+            <div class="sidebar-card">
+                <div class="sidebar-title">💡 小贴士</div>
+                <div style="padding: 8px 0; color: var(--text-dark); line-height: 1.7; font-size: 0.9rem;">
+                    <p style="margin-bottom: 12px;">🏺 <strong>窑洞模拟</strong>：体验厚土保温的冬暖夏凉效果</p>
+                    <p style="margin-bottom: 12px;">🌍 <strong>南北对比</strong>：对比南北方民居的建筑特征差异</p>
+                    <p style="margin-bottom: 12px;">💰 <strong>能耗估算</strong>：了解传统建筑如何节省能源消耗</p>
+                    <p>📚 <strong>学习资源</strong>：获取更多关于传统建筑的学习资料</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 中间主内容区 -->
+        <main class="main-content">
+            <!-- 工具选择网格 -->
+            <div class="tool-grid" id="toolGrid">
+                <div class="tool-card" onclick="selectTool('simulation')">
+                    <div class="tool-icon">🏺</div>
+                    <h3 class="tool-title">窑洞冬暖夏凉模拟</h3>
+                    <p class="tool-desc">模拟窑洞在不同季节的室内外温度变化，体验厚土层的保温隔热效果</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag">交互式</span>
+                        <span class="tool-tag">可视化</span>
+                        <span class="tool-tag">教学</span>
+                    </div>
+                </div>
+
+                <div class="tool-card" onclick="selectTool('comparison')">
+                    <div class="tool-icon">🌍</div>
+                    <h3 class="tool-title">南北民居对比</h3>
+                    <p class="tool-desc">对比南北方典型民居在墙体厚度、屋顶坡度、窗墙比等方面的差异</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag">数据对比</span>
+                        <span class="tool-tag">图表</span>
+                        <span class="tool-tag">分析</span>
+                    </div>
+                </div>
+
+                <div class="tool-card" onclick="selectTool('calculator')">
+                    <div class="tool-icon">💰</div>
+                    <h3 class="tool-title">能耗估算器</h3>
+                    <p class="tool-desc">基于建筑特征估算传统民居与现代建筑的能耗差异</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag">计算器</span>
+                        <span class="tool-tag">节能</span>
+                        <span class="tool-tag">环保</span>
+                    </div>
+                </div>
+
+                <div class="tool-card" onclick="selectTool('resources')">
+                    <div class="tool-icon">📚</div>
+                    <h3 class="tool-title">学习资源库</h3>
+                    <p class="tool-desc">收集整理的传统民居、建筑气候学相关学习资料和推荐阅读</p>
+                    <div class="tool-tags">
+                        <span class="tool-tag">资源</span>
+                        <span class="tool-tag">学习</span>
+                        <span class="tool-tag">参考</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 窑洞模拟面板 -->
+            <div class="simulation-panel" id="simulationPanel">
+                <h2 class="simulation-title">🏺 窑洞冬暖夏凉模拟</h2>
+
+                <div class="simulation-controls">
+                    <div class="control-group">
+                        <label class="control-label">选择季节</label>
+                        <select class="control-select" id="seasonSelect">
+                            <option value="winter">❄️ 冬季</option>
+                            <option value="summer">☀️ 夏季</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">墙体厚度 (mm)</label>
+                        <input type="range" class="control-input" id="wallThickness" min="500" max="1500" value="800" style="width: 100%;">
+                        <div id="wallValue" style="text-align: center; margin-top: 8px; font-weight: 600; color: var(--primary);">800 mm</div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">参考民居</label>
+                        <select class="control-select" id="houseSelect">
+                            <option value="陕北窑洞">陕北窑洞</option>
+                            <option value="藏族碉房">藏族碉房</option>
+                            <option value="羌族碉楼">羌族碉楼</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="caveChart" style="width: 100%; height: 350px; margin-bottom: 24px;"></div>
+
+                <div class="simulation-result">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div>
+                            <div class="result-label">室外温度</div>
+                            <div class="result-value" id="outdoorTemp">-5°C</div>
+                        </div>
+                        <div>
+                            <div class="result-label">窑洞室内温度</div>
+                            <div class="result-value" id="indoorTemp" style="color: var(--secondary);">12°C</div>
+                        </div>
+                    </div>
+                    <p class="result-desc" id="caveDesc">
+                        厚土层如同天然的温度调节器，冬季减缓室内热量流失，夏季阻挡外部热量进入。
+                        这种被动式设计无需任何能源消耗，却能创造舒适的室内环境。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 南北对比面板 -->
+            <div class="simulation-panel" id="comparisonPanel" style="display: none;">
+                <h2 class="simulation-title">🌍 南北民居对比</h2>
+
+                <div class="simulation-controls">
+                    <div class="control-group">
+                        <label class="control-label">北方民居</label>
+                        <select class="control-select" id="northHouse">
+                            <option value="陕北窑洞">陕北窑洞</option>
+                            <option value="北京四合院">北京四合院</option>
+                            <option value="东北大院">东北大院</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">南方民居</label>
+                        <select class="control-select" id="southHouse">
+                            <option value="福建土楼">福建土楼</option>
+                            <option value="徽派建筑">徽派建筑</option>
+                            <option value="傣族竹楼">傣族竹楼</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="comparisonChart" style="width: 100%; height: 350px; margin-bottom: 24px;"></div>
+
+                <div class="simulation-result">
+                    <h3 style="color: var(--primary); margin: 0 0 16px 0;">📊 对比分析</h3>
+                    <div class="comparison-grid" id="comparisonResult">
+                        <!-- 结果将通过JS填充 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 能耗估算面板 -->
+            <div class="simulation-panel" id="calculatorPanel" style="display: none;">
+                <h2 class="simulation-title">💰 能耗估算器</h2>
+
+                <div class="simulation-controls">
+                    <div class="control-group">
+                        <label class="control-label">选择传统民居</label>
+                        <select class="control-select" id="traditionalHouse">
+                            <option value="陕北窑洞">陕北窑洞</option>
+                            <option value="福建土楼">福建土楼</option>
+                            <option value="徽派建筑">徽派建筑</option>
+                            <option value="北京四合院">北京四合院</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">建筑面积 (m²)</label>
+                        <input type="number" class="control-input" id="areaInput" value="200" min="50" max="1000">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">使用年限</label>
+                        <select class="control-select" id="yearsSelect">
+                            <option value="10">10年</option>
+                            <option value="20">20年</option>
+                            <option value="50" selected>50年</option>
+                            <option value="100">100年</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="simulation-result">
+                    <h3 style="color: var(--primary); margin: 0 0 16px 0;">💡 估算结果</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px;">
+                        <div style="background: white; padding: 20px; border-radius: 16px;">
+                            <div class="result-label">传统民居能耗</div>
+                            <div class="result-value" id="traditionalCost" style="color: var(--secondary);">¥ 12万</div>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 16px;">
+                            <div class="result-label">现代建筑能耗</div>
+                            <div class="result-value" id="modernCost">¥ 40万</div>
+                        </div>
+                    </div>
+                    <div style="background: #F0FAF0; padding: 16px; border-radius: 16px; border-left: 4px solid var(--secondary);">
+                        <div style="font-weight: 700; color: var(--secondary); font-size: 1.2rem; margin-bottom: 8px;">
+                            🌟 节省: <span id="savings">70%</span>
+                        </div>
+                        <p class="result-desc" id="energyDesc">
+                            传统民居通过被动式设计，如厚墙、天井、朝向优化等，大幅减少了对空调暖气的依赖。
+                            在节省能源费用的同时，也降低了碳排放，是真正的绿色建筑。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 学习资源面板 -->
+            <div class="simulation-panel" id="resourcesPanel" style="display: none;">
+                <h2 class="simulation-title">📚 学习资源库</h2>
+
+                <div id="resourceList">
+                    <div class="resource-item">
+                        <div class="resource-icon">📖</div>
+                        <div class="resource-content">
+                            <h4 class="resource-title">中国传统民居建筑</h4>
+                            <p class="resource-desc">系统介绍中国各地区传统民居的建筑特点与文化内涵</p>
+                            <span class="resource-tag">推荐书籍</span>
+                        </div>
+                    </div>
+
+                    <div class="resource-item">
+                        <div class="resource-icon">🎓</div>
+                        <div class="resource-content">
+                            <h4 class="resource-title">建筑气候学</h4>
+                            <p class="resource-desc">学习建筑与气候的关系，理解被动式设计的科学原理</p>
+                            <span class="resource-tag">专业教材</span>
+                        </div>
+                    </div>
+
+                    <div class="resource-item">
+                        <div class="resource-icon">🎬</div>
+                        <div class="resource-content">
+                            <h4 class="resource-title">《中国民居》纪录片</h4>
+                            <p class="resource-desc">通过镜头深入了解各地传统民居的建造智慧与生活方式</p>
+                            <span class="resource-tag">影视资源</span>
+                        </div>
+                    </div>
+
+                    <div class="resource-item">
+                        <div class="resource-icon">🏛️</div>
+                        <div class="resource-content">
+                            <h4 class="resource-title">建筑历史网站</h4>
+                            <p class="resource-desc">收录大量建筑历史资料与图片的在线资源库</p>
+                            <span class="resource-tag">在线资源</span>
+                        </div>
+                    </div>
+
+                    <div class="resource-item">
+                        <div class="resource-icon">🔬</div>
+                        <div class="resource-content">
+                            <h4 class="resource-title">传统建筑技术研究</h4>
+                            <p class="resource-desc">关于传统建筑材料、结构、技术的学术研究论文集</p>
+                            <span class="resource-tag">学术资料</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 右侧边栏 -->
+        <aside class="right-sidebar">
+            <div class="ranking-card">
+                <div class="ranking-title">✨ 特色工具</div>
+                <div class="ranking-list">
+                    <div class="ranking-item" onclick="selectTool('simulation')">
+                        <div class="ranking-number gold">1</div>
+                        <div class="ranking-info">
+                            <div class="ranking-name">窑洞模拟</div>
+                            <div class="ranking-value">最受欢迎</div>
+                        </div>
+                    </div>
+                    <div class="ranking-item" onclick="selectTool('comparison')">
+                        <div class="ranking-number silver">2</div>
+                        <div class="ranking-info">
+                            <div class="ranking-name">南北对比</div>
+                            <div class="ranking-value">数据丰富</div>
+                        </div>
+                    </div>
+                    <div class="ranking-item" onclick="selectTool('calculator')">
+                        <div class="ranking-number bronze">3</div>
+                        <div class="ranking-info">
+                            <div class="ranking-name">能耗估算</div>
+                            <div class="ranking-value">实用性强</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ranking-card">
+                <div class="ranking-title">🎯 今日推荐</div>
+                <div style="padding: 16px; background: linear-gradient(135deg, #FEF9EF, #F4EFE6); border-radius: 16px;">
+                    <div style="font-weight: 700; color: var(--primary); margin-bottom: 8px;">🏺 陕北窑洞深度探索</div>
+                    <p style="color: var(--text-dark); font-size: 0.85rem; line-height: 1.6; margin-bottom: 12px;">
+                        通过窑洞模拟工具，体验黄土高原上的建筑奇迹，理解厚土层如何调节温度。
+                    </p>
+                    <button class="toolbar-btn" style="width: 100%;" onclick="selectTool('simulation')">立即体验 →</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="site-footer">
+        <p>🏮 栖居之道 —— 中国古代民居的气候适应性智慧图谱</p>
+        <p>©2026 中国大学生计算机设计大赛 | 云南大学 信息学院</p>
+    </footer>
+</div>
+
+<!-- 返回顶部 -->
+<button id="backToTop" title="返回顶部">↑</button>
+
+<!-- Toast通知 -->
+<div id="toast" class="toast"></div>
+
+<!-- 登录模态框 -->
+<div id="login-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modal-title">用户登录</h2>
+        <form id="auth-form">
+            <div class="form-group">
+                <label for="email">邮箱：</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码：</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" id="auth-submit-btn" class="modal-btn">登录</button>
+        </form>
+        <p id="auth-toggle" style="text-align: center; margin-top: 16px; color: var(--text-dark);">
+            还没有账号？<a href="#" onclick="toggleAuthMode(); return false;" style="color: var(--primary); text-decoration: none; font-weight: 600;">立即注册</a>
+        </p>
+    </div>
+</div>
+
+<!-- 脚本 -->
+<script src="js/shared.js"></script>
+<script>
+let caveChart, comparisonChart;
+let currentTool = 'simulation';
+
+function selectTool(tool) {
+    currentTool = tool;
+    document.querySelectorAll('[data-tool]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tool === tool);
+    });
+    document.getElementById('simulationPanel').style.display = tool === 'simulation' ? 'block' : 'none';
+    document.getElementById('comparisonPanel').style.display = tool === 'comparison' ? 'block' : 'none';
+    document.getElementById('calculatorPanel').style.display = tool === 'calculator' ? 'block' : 'none';
+    document.getElementById('resourcesPanel').style.display = tool === 'resources' ? 'block' : 'none';
+
+    if (tool === 'simulation') {
+        setTimeout(() => initCaveChart(), 100);
+    } else if (tool === 'comparison') {
+        setTimeout(() => initComparisonChart(), 100);
+    } else if (tool === 'calculator') {
+        updateEnergyCalculation();
+    }
+}
+
+function initCaveChart() {
+    caveChart = echarts.init(document.getElementById('caveChart'));
+    updateCaveSimulation();
+}
+
+function updateCaveSimulation() {
+    const season = document.getElementById('seasonSelect').value;
+    const wallThickness = parseInt(document.getElementById('wallThickness').value);
+    document.getElementById('wallValue').textContent = wallThickness + ' mm';
+
+    const winterOutdoor = [-5, -3, 2, 8, 15, 20, 24, 22, 16, 9, 2, -4];
+    const winterIndoor = [12, 12, 13, 14, 15, 16, 17, 16, 15, 14, 13, 12];
+    const summerOutdoor = [20, 22, 26, 30, 34, 36, 38, 36, 32, 28, 24, 22];
+    const summerIndoor = [20, 20, 21, 22, 23, 24, 24, 23, 22, 21, 20, 20];
+
+    const outdoorData = season === 'winter' ? winterOutdoor : summerOutdoor;
+    const indoorData = season === 'winter' ? winterIndoor : summerIndoor;
+
+    document.getElementById('outdoorTemp').textContent = season === 'winter' ? '-5°C' : '38°C';
+    document.getElementById('indoorTemp').textContent = season === 'winter' ? '12°C' : '24°C';
+
+    const insulationEffect = Math.min(wallThickness / 1000, 1.5);
+    const adjustedIndoor = indoorData.map(v => season === 'winter' ? v + insulationEffect : v - insulationEffect);
+
+    caveChart.setOption({
+        title: {text: '窑洞室内外温度对比 (24小时)', left: 'center'},
+        tooltip: {trigger: 'axis'},
+        legend: {data: ['室外温度', '窑洞室内温度'], bottom: 0},
+        grid: {containLabel: true, left: '8%', right: '8%', bottom: '15%', top: '15%'},
+        xAxis: {type: 'category', data: ['0时','2时','4时','6时','8时','10时','12时','14时','16时','18时','20时','22时']},
+        yAxis: {type: 'value', name: '温度 (°C)'},
+        series: [
+            {
+                name: '室外温度',
+                type: 'line',
+                smooth: true,
+                data: outdoorData,
+                lineStyle: {color: '#91cc75', width: 2},
+                itemStyle: {color: '#91cc75'},
+                areaStyle: {color: 'rgba(145, 204, 117, 0.1)'}
+            },
+            {
+                name: '窑洞室内温度',
+                type: 'line',
+                smooth: true,
+                data: adjustedIndoor,
+                lineStyle: {color: '#c23531', width: 3},
+                itemStyle: {color: '#c23531'},
+                areaStyle: {color: 'rgba(194, 53, 49, 0.1)'}
+            }
+        ]
+    });
+}
+
+function initComparisonChart() {
+    comparisonChart = echarts.init(document.getElementById('comparisonChart'));
+    updateComparison();
+}
+
+function updateComparison() {
+    const northHouseName = document.getElementById('northHouse').value;
+    const southHouseName = document.getElementById('southHouse').value;
+
+    const northHouse = allHouses.find(h => h.name === northHouseName) || allHouses[0];
+    const southHouse = allHouses.find(h => h.name === southHouseName) || allHouses[12];
+
+    comparisonChart.setOption({
+        title: {text: '南北民居建筑特征对比', left: 'center'},
+        tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+        legend: {data: [northHouseName, southHouseName], bottom: 0},
+        grid: {containLabel: true, left: '8%', right: '8%', bottom: '15%', top: '15%'},
+        xAxis: {type: 'category', data: ['墙体厚度', '屋顶坡度', '窗墙比', '保温评分', '通风评分']},
+        yAxis: [
+            {type: 'value', name: '厚度/坡度/评分'},
+            {type: 'value', name: '窗墙比', min: 0, max: 0.5}
+        ],
+        series: [
+            {
+                name: northHouseName,
+                type: 'bar',
+                data: [northHouse.wall / 10, northHouse.pitch, null, northHouse.scores.保温, northHouse.scores.通风],
+                itemStyle: {color: '#4A6FA5'}
+            },
+            {
+                name: southHouseName,
+                type: 'bar',
+                data: [southHouse.wall / 10, southHouse.pitch, null, southHouse.scores.保温, southHouse.scores.通风],
+                itemStyle: {color: '#6A994E'}
+            },
+            {
+                name: northHouseName + ' (窗墙比)',
+                type: 'line',
+                yAxisIndex: 1,
+                data: [null, null, northHouse.ratio, null, null],
+                itemStyle: {color: '#4A6FA5'},
+                lineStyle: {width: 3}
+            },
+            {
+                name: southHouseName + ' (窗墙比)',
+                type: 'line',
+                yAxisIndex: 1,
+                data: [null, null, southHouse.ratio, null, null],
+                itemStyle: {color: '#6A994E'},
+                lineStyle: {width: 3}
+            }
+        ]
+    });
+
+    document.getElementById('comparisonResult').innerHTML = `
+        <div class="comparison-item">
+            <div class="comparison-name">${northHouseName}</div>
+            <div class="comparison-value">${northHouse.wall}</div>
+            <div class="comparison-unit">mm 墙体</div>
+        </div>
+        <div class="comparison-item">
+            <div class="comparison-name">${southHouseName}</div>
+            <div class="comparison-value">${southHouse.wall}</div>
+            <div class="comparison-unit">mm 墙体</div>
+        </div>
+        <div class="comparison-item">
+            <div class="comparison-name">${northHouseName}</div>
+            <div class="comparison-value">${northHouse.pitch}°</div>
+            <div class="comparison-unit">屋顶坡度</div>
+        </div>
+        <div class="comparison-item">
+            <div class="comparison-name">${southHouseName}</div>
+            <div class="comparison-value">${southHouse.pitch}°</div>
+            <div class="comparison-unit">屋顶坡度</div>
+        </div>
+    `;
+}
+
+function updateEnergyCalculation() {
+    const houseName = document.getElementById('traditionalHouse').value;
+    const area = parseInt(document.getElementById('areaInput').value);
+    const years = parseInt(document.getElementById('yearsSelect').value);
+
+    const house = allHouses.find(h => h.name === houseName) || allHouses[0];
+    const efficiencyScore = (house.scores.保温 + house.scores.隔热) / 2;
+    const savingsRatio = 0.3 + (efficiencyScore / 10) * 0.5;
+
+    const modernCost = area * 200 * years;
+    const traditionalCost = Math.round(modernCost * (1 - savingsRatio));
+
+    document.getElementById('traditionalCost').textContent = '¥ ' + (traditionalCost / 10000).toFixed(1) + '万';
+    document.getElementById('modernCost').textContent = '¥ ' + (modernCost / 10000).toFixed(0) + '万';
+    document.getElementById('savings').textContent = Math.round(savingsRatio * 100) + '%';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        initCaveChart();
+    }, 100);
+
+    document.getElementById('seasonSelect').addEventListener('change', updateCaveSimulation);
+    document.getElementById('wallThickness').addEventListener('input', updateCaveSimulation);
+    document.getElementById('houseSelect').addEventListener('change', updateCaveSimulation);
+
+    document.getElementById('northHouse').addEventListener('change', updateComparison);
+    document.getElementById('southHouse').addEventListener('change', updateComparison);
+
+    document.getElementById('traditionalHouse').addEventListener('change', updateEnergyCalculation);
+    document.getElementById('areaInput').addEventListener('input', updateEnergyCalculation);
+    document.getElementById('yearsSelect').addEventListener('change', updateEnergyCalculation);
+
+    document.querySelectorAll('[data-tool]').forEach(btn => {
+        btn.addEventListener('click', () => selectTool(btn.dataset.tool));
+    });
+});
+</script>
+</body>
+</html>

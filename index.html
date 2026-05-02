@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>栖居之道 · 总览</title>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/js/china.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- 样式 -->
+    <link rel="stylesheet" href="css/layout.css">
+    <style>
+        /* 首页特定样式 */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .chart-full {
+            grid-column: 1 / -1;
+        }
+
+        #mapChart {
+            width: 100%;
+            height: 400px;
+        }
+
+        #barChart, #radarChart, #rankingChart, #roseChart, #scatterChart, #boxPlotChart {
+            width: 100%;
+            height: 350px;
+        }
+
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .kpi-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--accent);
+        }
+
+        .kpi-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .kpi-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .kpi-value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1.2;
+            margin: 12px 0 4px;
+        }
+
+        .kpi-unit {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .info-panel {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        #houseInfo {
+            padding: 20px;
+        }
+
+        #houseName {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .climate-badge {
+            display: inline-block;
+            padding: 4px 18px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: #F0E5D2;
+            color: #5A3A2A;
+            border: 0.5px solid var(--accent);
+        }
+
+        .intro-text-detail {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            background: #FEF9F0;
+            padding: 14px 18px;
+            border-radius: 24px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px 20px;
+            margin-bottom: 24px;
+            background: #FCF8F0;
+            border-radius: 24px;
+            padding: 18px;
+        }
+
+        .metric-item {
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 0.85rem;
+            border-bottom: 1px dashed #EADBB0;
+            padding-bottom: 6px;
+        }
+
+        .metric-label {
+            font-weight: 700;
+            color: var(--text-muted);
+            min-width: 70px;
+        }
+
+        .adapt-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            background: #F4EFE6;
+            border-radius: 24px;
+            padding: 16px;
+            margin: 12px 0 8px;
+        }
+
+        .adapt-item {
+            font-size: 0.8rem;
+            line-height: 1.4;
+            border-left: 2px solid var(--accent);
+            padding-left: 12px;
+        }
+
+        .adapt-item strong {
+            color: var(--primary);
+        }
+
+        .climate-range {
+            background: #F0E5D2;
+            border-radius: 24px;
+            padding: 10px 16px;
+            font-size: 0.8rem;
+            margin-top: 16px;
+        }
+
+        .favorite-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .favorite-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .favorite-btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .favorite-btn.favorited {
+            background-color: #DC143C;
+        }
+
+        .tool-action-btn {
+            display: block;
+            width: 100%;
+            padding: 10px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-light);
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            transition: var(--transition);
+            text-align: center;
+        }
+        .tool-action-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        @media (max-width: 1000px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            .kpi-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 顶部导航栏 -->
+    <div class="hero-nav">
+        <div class="nav-header">
+            <div class="logo-area">
+                <span class="logo-icon">🏮</span>
+                <h1>栖居之道</h1>
+                <span class="title-sub">气候适应性智慧 · 总览</span>
+            </div>
+            <div class="nav-links">
+                <span id="user-info"></span>
+                <button id="login-btn" class="login-btn" onclick="showLoginModal()">登录/注册</button>
+                <button id="logout-btn" class="logout-btn" style="display: none;" onclick="logout()">退出</button>
+                <button id="favorites-btn" class="favorites-btn" style="display: none;" onclick="window.location.href='favorites.html'">我的收藏</button>
+            </div>
+        </div>
+        <div class="nav-tabs">
+            <a href="index.html" class="nav-tab active">📊 总览</a>
+            <a href="houses.html" class="nav-tab">🏘️ 民居库</a>
+            <a href="map.html" class="nav-tab">🌍 气候分析</a>
+            <a href="lab.html" class="nav-tab">🧪 实验室</a>
+            <a href="tools.html" class="nav-tab">🧰 工具箱</a>
+            <a href="profile.html" class="nav-tab">👤 个人中心</a>
+        </div>
+        <div class="intro-section">
+            <div class="intro-text">
+                <p>"<strong>天人合一，道法自然</strong> —— 传统民居顺应天时、地气、材美。"</p>
+                <p class="quote">窑洞厚土保温、土楼防风抗潮、天井引风纳凉……数据见证古人生态哲思。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 三栏布局 -->
+    <div class="main-layout">
+        <!-- 左侧边栏 -->
+        <aside class="left-sidebar">
+            <div class="sidebar-card">
+                <div class="sidebar-title">📜 历史时期</div>
+                <div class="timeline-axis">
+                    <div class="timeline-btn active" data-period="all">🔁 全部时期</div>
+                    <div class="timeline-btn" data-period="pre_qin">🏺 史前-先秦</div>
+                    <div class="timeline-btn" data-period="qin_han">🏛️ 秦汉</div>
+                    <div class="timeline-btn" data-period="wei_jin_tang">⛩️ 魏晋-隋唐</div>
+                    <div class="timeline-btn" data-period="song_yuan">🏯 宋元</div>
+                    <div class="timeline-btn" data-period="ming_qing">🏮 明清</div>
+                </div>
+                <div class="period-note" id="periodNote" style="margin-top: 16px; padding: 10px 16px; background: #FEF7E8; border-radius: 40px; font-size: 0.85rem; border-left: 4px solid var(--accent); color: #4A3A2A;">
+                    <strong>🏮 当前：全部时期</strong> — 25种民居完整呈现，跨越千年智慧。
+                </div>
+            </div>
+
+            <div class="sidebar-card">
+                <div class="sidebar-title">🌍 气候筛选</div>
+                <div class="climate-filter">
+                    <select id="climateFilter">
+                        <option value="all">全部气候区</option>
+                        <option value="严寒区">❄️ 严寒区</option>
+                        <option value="寒冷区">🍂 寒冷区</option>
+                        <option value="夏热冬冷区">🌿 夏热冬冷区</option>
+                        <option value="夏热冬暖区">☀️ 夏热冬暖区</option>
+                        <option value="温和区">🌸 温和区</option>
+                    </select>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 中间主内容区 -->
+        <main class="main-content">
+            <!-- KPI指标 -->
+            <div class="kpi-row" id="kpiContainer"></div>
+
+            <!-- 地图和详情 -->
+            <div class="content-card">
+                <div class="card-header">🗺️ 民居地理分布 · 气候区划</div>
+                <div class="card-content" style="padding: 12px;">
+                    <div id="mapChart"></div>
+                </div>
+            </div>
+
+            <!-- 图表网格 -->
+            <div class="charts-grid">
+                <div class="content-card chart-full">
+                    <div class="card-header">📊 多维特征对比</div>
+                    <div class="card-content" style="padding: 12px;">
+                        <div id="barChart"></div>
+                    </div>
+                </div>
+                <div class="content-card">
+                    <div class="card-header">⭐ 气候适应性评分</div>
+                    <div class="card-content" style="padding: 12px;">
+                        <div id="radarChart"></div>
+                    </div>
+                </div>
+                <div class="content-card">
+                    <div class="card-header">🌸 气候区民居占比</div>
+                    <div class="card-content" style="padding: 12px;">
+                        <div id="roseChart"></div>
+                    </div>
+                </div>
+                <div class="content-card chart-full">
+                    <div class="card-header">🏆 排行榜</div>
+                    <div class="card-content" style="padding: 12px;">
+                        <div id="rankingChart"></div>
+                    </div>
+                </div>
+                <div class="content-card chart-full">
+                    <div class="card-header">🔵 气候因子相关性 · 散点趋势</div>
+                    <div class="card-content" style="padding: 12px;">
+                        <div id="scatterChart"></div>
+                    </div>
+                </div>
+                <div class="content-card chart-full">
+                    <div class="card-header">📦 各气候区指标分布 · 箱线图</div>
+                    <div class="card-content" style="padding: 12px;">
+                        <div id="boxPlotChart"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 右侧边栏 -->
+        <aside class="right-sidebar">
+            <div class="content-card">
+                <div class="card-header">🏡 民居智慧详情</div>
+                <div class="info-panel">
+                    <div id="houseInfo">
+                        <p style="color: #888; text-align: center;">点击地图上的红点查看完整建筑智慧数据</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ranking-card">
+                <div class="ranking-title">🏆 墙体厚度 Top 10</div>
+                <div class="ranking-list" id="wallRanking"></div>
+            </div>
+            <div class="ranking-card">
+                <div class="ranking-title">🔧 操作工具</div>
+                <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                    <button id="clearHighlightBtn" class="tool-action-btn" onclick="clearHighlights()">✨ 清除高亮</button>
+                    <button id="exportCSVBtn" class="tool-action-btn" onclick="exportToCSV()">📥 导出 CSV 数据</button>
+                    <button id="exportImageBtn" class="tool-action-btn" onclick="showExportImageModal()">🖼️ 导出图表为图片</button>
+                    <button id="compareBtn" class="tool-action-btn" onclick="showCompareModal()">🔄 双民居对比</button>
+                    <button id="simulateCaveBtn" class="tool-action-btn" onclick="showCaveSimulation()">🏺 窑洞冬暖夏凉模拟</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="site-footer">
+        <p>🏮 栖居之道 —— 中国古代民居的气候适应性智慧图谱</p>
+        <p>©2026 中国大学生计算机设计大赛 | 云南大学 信息学院</p>
+    </footer>
+</div>
+
+<!-- 返回顶部 -->
+<button id="backToTop" title="返回顶部">↑</button>
+
+<!-- Toast通知 -->
+<div id="toast" class="toast"></div>
+
+<!-- 登录模态框 -->
+<div id="login-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modal-title">用户登录</h2>
+        <form id="auth-form">
+            <div class="form-group">
+                <label for="email">邮箱：</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码：</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" id="auth-submit-btn" class="modal-btn">登录</button>
+        </form>
+        <p id="auth-toggle" style="text-align: center; margin-top: 16px; color: var(--text-dark);">
+            还没有账号？<a href="#" onclick="toggleAuthMode(); return false;" style="color: var(--primary); text-decoration: none; font-weight: 600;">立即注册</a>
+        </p>
+    </div>
+</div>
+
+<!-- 脚本 -->
+<script src="js/shared.js"></script>
+<script>
+let currentHouses = [...allHouses];
+let currentHighlightIndex = -1;
+let currentPeriod = "all";
+let mapChart, barChart, radarChart, rankingChart, roseChart, scatterChart, boxPlotChart;
+const climateColors = { '严寒区':'#4A6FA5', '寒冷区':'#C8C6C6', '夏热冬冷区':'#6A994E', '夏热冬暖区':'#E28A55', '温和区':'#E8CFF3' };
+const periodNotes = {
+    "all": "<strong>🏮 当前：全部时期</strong> — 25种民居完整呈现。",
+    "pre_qin": "<strong>🏺 史前-先秦</strong> — 穴居、干栏式萌芽，早期被动适应。",
+    "qin_han": "<strong>🏛️ 秦汉</strong> — 合院雏形，夯土成熟。",
+    "wei_jin_tang": "<strong>⛩️ 魏晋-隋唐</strong> — 天井出现，木构成熟。",
+    "song_yuan": "<strong>🏯 宋元</strong> — 马头墙、碉楼防御增强。",
+    "ming_qing": "<strong>🏮 明清</strong> — 民居类型大爆发，智慧巅峰。"
+};
+
+function updateKPI() {
+    const total = currentHouses.length;
+    const avgWall = (currentHouses.reduce((s, h) => s + h.wall, 0) / total).toFixed(0);
+    const avgInsulation = (currentHouses.reduce((s, h) => s + h.scores.保温, 0) / total).toFixed(1);
+    const climateSet = new Set(currentHouses.map(h => h.climate));
+
+    document.getElementById('kpiContainer').innerHTML = `
+        <div class="kpi-card"><div class="kpi-icon">🏘️</div><div class="kpi-label">民居数量</div><div class="kpi-value">${total}</div><div class="kpi-unit">处</div></div>
+        <div class="kpi-card"><div class="kpi-icon">🧱</div><div class="kpi-label">平均墙体厚度</div><div class="kpi-value">${avgWall}</div><div class="kpi-unit">mm</div></div>
+        <div class="kpi-card"><div class="kpi-icon">🔥</div><div class="kpi-label">平均保温评分</div><div class="kpi-value">${avgInsulation}</div><div class="kpi-unit">/10</div></div>
+        <div class="kpi-card"><div class="kpi-icon">🌍</div><div class="kpi-label">覆盖气候区</div><div class="kpi-value">${climateSet.size}</div><div class="kpi-unit">个</div></div>
+    `;
+}
+
+function updateInfoPanel(house) {
+    const container = document.getElementById('houseInfo');
+    if (!house) {
+        container.innerHTML = '<p style="color: #888; text-align: center;">点击地图上的红点查看完整建筑智慧数据</p>';
+        return;
+    }
+
+    const measures = `<div class="adapt-grid"><div class="adapt-item"><strong>🧱 隔热</strong><br>${house.insulation || '—'}</div><div class="adapt-item"><strong>🔥 保温</strong><br>${house.heatKeep || '—'}</div><div class="adapt-item"><strong>🌬️ 通风</strong><br>${house.ventilation || '—'}</div><div class="adapt-item"><strong>💧 防潮</strong><br>${house.moisture || '—'}</div></div>`;
+    const climateExtra = `<div class="climate-range"><strong>🌡️ 气候特征</strong> 年均温 ${house.tempRange || house.temp + '℃'} | 降水 ${house.precipRange || house.precip + 'mm'} | 湿度 ${house.humidity || '—'}</div>`;
+
+    container.innerHTML = `
+        <div id="houseName">${house.name}</div>
+        <div class="climate-badge">${house.climate}</div>
+        <div class="intro-text-detail"><strong>📜 简介</strong><br>${house.desc}</div>
+        <div class="metrics-grid">
+            <div class="metric-item"><span class="metric-label">🏗️ 墙体材料</span><span class="metric-value">${house.wallMat || '—'}</span></div>
+            <div class="metric-item"><span class="metric-label">🧱 墙体厚度</span><span class="metric-value">${house.wall} mm</span></div>
+            <div class="metric-item"><span class="metric-label">📐 屋顶坡度</span><span class="metric-value">${house.pitch}°</span></div>
+            <div class="metric-item"><span class="metric-label">🪟 窗墙比</span><span class="metric-value">${house.ratio}</span></div>
+            <div class="metric-item"><span class="metric-label">🌡️ 年均温</span><span class="metric-value">${house.temp}℃</span></div>
+            <div class="metric-item"><span class="metric-label">💧 年降水</span><span class="metric-value">${house.precip} mm</span></div>
+        </div>
+        <div class="adapt-section"><strong>🏮 气候适应性智慧</strong>${measures}</div>
+        ${climateExtra}
+        <div class="favorite-section">
+            <button id="favorite-btn" class="favorite-btn" onclick="toggleFavorite('${house.name}'); updateFavoriteButton('${house.name}');">
+                ${userFavorites.has(house.name) ? '❤️ 已收藏' : '🤍 收藏此民居'}
+            </button>
+        </div>
+    `;
+}
+
+function updateFavoriteButton(houseName) {
+    const btn = document.getElementById('favorite-btn');
+    if (btn) {
+        btn.innerHTML = userFavorites.has(houseName) ? '❤️ 已收藏' : '🤍 收藏此民居';
+        btn.className = userFavorites.has(houseName) ? 'favorite-btn favorited' : 'favorite-btn';
+    }
+}
+
+function updateWallRanking() {
+    const sorted = [...currentHouses].sort((a, b) => b.wall - a.wall).slice(0, 10);
+    const container = document.getElementById('wallRanking');
+    container.innerHTML = sorted.map((house, idx) => {
+        let numberClass = '';
+        if (idx === 0) numberClass = 'gold';
+        else if (idx === 1) numberClass = 'silver';
+        else if (idx === 2) numberClass = 'bronze';
+        return `
+            <div class="ranking-item" onclick="highlightHouseByName('${house.name}')">
+                <div class="ranking-number ${numberClass}">${idx + 1}</div>
+                <div class="ranking-info">
+                    <div class="ranking-name">${house.name}</div>
+                    <div class="ranking-value">${house.wall} mm | ${house.climate}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function highlightHouseByName(name) {
+    const idx = currentHouses.findIndex(h => h.name === name);
+    if (idx !== -1) highlightHouse(idx);
+}
+
+function highlightHouse(index) {
+    if (index === currentHighlightIndex) return;
+    if (currentHighlightIndex !== -1) {
+        barChart.dispatchAction({type: 'downplay', seriesIndex: 0, dataIndex: currentHighlightIndex});
+        barChart.dispatchAction({type: 'downplay', seriesIndex: 1, dataIndex: currentHighlightIndex});
+        barChart.dispatchAction({type: 'downplay', seriesIndex: 2, dataIndex: currentHighlightIndex});
+        radarChart.dispatchAction({type: 'downplay', seriesIndex: 0, dataIndex: currentHighlightIndex});
+    }
+    barChart.dispatchAction({type: 'highlight', seriesIndex: 0, dataIndex: index});
+    barChart.dispatchAction({type: 'highlight', seriesIndex: 1, dataIndex: index});
+    barChart.dispatchAction({type: 'highlight', seriesIndex: 2, dataIndex: index});
+    barChart.dispatchAction({type: 'showTip', seriesIndex: 0, dataIndex: index});
+    radarChart.dispatchAction({type: 'highlight', seriesIndex: 0, dataIndex: index});
+    currentHighlightIndex = index;
+    updateInfoPanel(currentHouses[index]);
+}
+
+
+function clearHighlights() {
+    if (currentHighlightIndex !== -1) {
+        barChart.dispatchAction({ type: 'downplay', seriesIndex: 0, dataIndex: currentHighlightIndex });
+        barChart.dispatchAction({ type: 'downplay', seriesIndex: 1, dataIndex: currentHighlightIndex });
+        barChart.dispatchAction({ type: 'downplay', seriesIndex: 2, dataIndex: currentHighlightIndex });
+        radarChart.dispatchAction({ type: 'downplay', seriesIndex: 0, dataIndex: currentHighlightIndex });
+        currentHighlightIndex = -1;
+        updateInfoPanel(null);
+    }
+}
+
+function renderRoseChart() {
+    // 统计各气候区的民居数量
+    const climateCount = {};
+    currentHouses.forEach(h => {
+        climateCount[h.climate] = (climateCount[h.climate] || 0) + 1;
+    });
+    const climateOrder = ['严寒区', '寒冷区', '夏热冬冷区', '夏热冬暖区', '温和区'];
+    const roseData = climateOrder
+        .filter(c => climateCount[c])
+        .map(c => ({
+            name: c,
+            value: climateCount[c],
+            itemStyle: { color: climateColors[c] || '#ccc' }
+        }));
+
+    roseChart.setOption({
+        tooltip: {
+            trigger: 'item',
+            formatter: function(params) {
+                const total = roseData.reduce((s, d) => s + d.value, 0);
+                const pct = ((params.value / total) * 100).toFixed(1);
+                return `<strong>${params.name}</strong><br>民居数量：${params.value} 处<br>占比：${pct}%`;
+            }
+        },
+        legend: {
+            orient: 'vertical',
+            right: '5%',
+            top: 'center',
+            data: roseData.map(d => d.name),
+            textStyle: { fontSize: 12, fontWeight: 'bold' }
+        },
+        series: [{
+            type: 'pie',
+            roseType: 'area',
+            radius: ['15%', '65%'],
+            center: ['40%', '50%'],
+            avoidLabelOverlap: true,
+            itemStyle: {
+                borderRadius: 6,
+                borderColor: '#fff',
+                borderWidth: 2
+            },
+            label: {
+                show: true,
+                formatter: function(params) {
+                    return `${params.name}\n${params.value}处`;
+                },
+                fontSize: 11,
+                fontWeight: 'bold',
+                color: '#4A3A2A'
+            },
+            labelLine: {
+                show: true,
+                length: 10,
+                length2: 15
+            },
+            emphasis: {
+                itemStyle: {
+                    shadowBlur: 10,
+                    shadowOffsetX: 0,
+                    shadowColor: 'rgba(0, 0, 0, 0.3)'
+                },
+                label: { fontSize: 14, fontWeight: 'bold' }
+            },
+            data: roseData
+        }]
+    }, true);
+
+    // 点击玫瑰图扇区 → 筛选对应气候区
+    roseChart.off('click');
+    roseChart.on('click', function(params) {
+        const climateName = params.name;
+        const selectEl = document.getElementById('climateFilter');
+        // 找到对应的 option 并选中
+        for (let opt of selectEl.options) {
+            if (opt.textContent.includes(climateName) || opt.value === climateName) {
+                selectEl.value = opt.value;
+                break;
+            }
+        }
+        filterByClimate(selectEl.value);
+    });
+}
+
+function exportToCSV() {
+    const data = currentHouses.map(h => ({
+        名称: h.name, 气候区: h.climate, 年均温: h.temp, 年降水: h.precip,
+        墙体厚度_mm: h.wall, 窗墙比: h.ratio, 屋顶坡度: h.pitch,
+        保温性: h.scores.保温, 隔热性: h.scores.隔热, 通风性: h.scores.通风, 防潮性: h.scores.防潮, 采光性: h.scores.采光,
+        简介: h.desc
+    }));
+    const headers = Object.keys(data[0]);
+    const csvRows = [headers.join(',')];
+    for (const row of data) {
+        const values = headers.map(header => JSON.stringify(row[header] ?? ''));
+        csvRows.push(values.join(','));
+    }
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `民居数据_${new Date().toISOString().slice(0,19)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function showCompareModal() {
+    // 创建对比弹窗
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; justify-content:center; align-items:center; z-index:2000;';
+    const card = document.createElement('div');
+    card.style.cssText = 'background:white; border-radius:20px; width:95%; max-width:900px; padding:24px; box-shadow:0 10px 25px rgba(0,0,0,0.2); max-height:90vh; overflow-y:auto;';
+    card.innerHTML = `
+        <h3 style="margin-bottom:20px; text-align:center;">🔄 双民居对比分析</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+            <div>
+                <label style="font-weight:700; color:#5A3A2A; display:block; margin-bottom:6px;">选择民居 A</label>
+                <select id="compareSelectA" style="width:100%; padding:10px 14px; border:2px solid #E8E0D3; border-radius:12px; font-size:0.9rem; background:#FEF9EF;">
+                    ${currentHouses.map((h, i) => `<option value="${i}">${h.name} (${h.climate})</option>`).join('')}
+                </select>
+            </div>
+            <div>
+                <label style="font-weight:700; color:#5A3A2A; display:block; margin-bottom:6px;">选择民居 B</label>
+                <select id="compareSelectB" style="width:100%; padding:10px 14px; border:2px solid #E8E0D3; border-radius:12px; font-size:0.9rem; background:#FEF9EF;">
+                    ${currentHouses.map((h, i) => `<option value="${i}">${h.name} (${h.climate})</option>`).join('')}
+                </select>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+            <div id="compareRadarA" style="height:280px; border:1px solid #E8E0D3; border-radius:16px; padding:8px;"></div>
+            <div id="compareRadarB" style="height:280px; border:1px solid #E8E0D3; border-radius:16px; padding:8px;"></div>
+        </div>
+        <div id="compareTable" style="margin-bottom:16px;"></div>
+        <button id="closeCompareBtn" style="width:100%; padding:10px; background:#2A3B4C; color:white; border:none; border-radius:30px; cursor:pointer; font-weight:600;">关闭</button>
+    `;
+    modal.appendChild(card);
+    document.body.appendChild(modal);
+
+    function updateCompare() {
+        const idxA = parseInt(document.getElementById('compareSelectA').value);
+        const idxB = parseInt(document.getElementById('compareSelectB').value);
+        if (idxA === idxB) {
+            document.getElementById('compareTable').innerHTML = '<p style="text-align:center; color:#C0392B; font-weight:600;">请选择两个不同的民居进行对比</p>';
+            return;
+        }
+        const houseA = currentHouses[idxA];
+        const houseB = currentHouses[idxB];
+
+        // 渲染两个雷达图
+        const indicators = [
+            { name: '保温', max: 10 }, { name: '隔热', max: 10 },
+            { name: '通风', max: 10 }, { name: '防潮', max: 10 }, { name: '采光', max: 10 }
+        ];
+
+        const chartA = echarts.init(document.getElementById('compareRadarA'));
+        chartA.setOption({
+            title: { text: `🏘️ ${houseA.name}`, left: 'center', textStyle: { fontSize: 13, fontWeight: 'bold', color: '#2A3B4C' } },
+            radar: { indicator: indicators, shape: 'circle', radius: '60%', name: { textStyle: { fontSize: 10, color: '#5A3A2A' } } },
+            series: [{
+                type: 'radar', data: [{ value: [houseA.scores.保温, houseA.scores.隔热, houseA.scores.通风, houseA.scores.防潮, houseA.scores.采光] }],
+                areaStyle: { color: 'rgba(42, 59, 76, 0.2)' }, lineStyle: { color: '#2A3B4C', width: 2 }, itemStyle: { color: '#2A3B4C' }
+            }]
+        }, true);
+
+        const chartB = echarts.init(document.getElementById('compareRadarB'));
+        chartB.setOption({
+            title: { text: `🏘️ ${houseB.name}`, left: 'center', textStyle: { fontSize: 13, fontWeight: 'bold', color: '#C0392B' } },
+            radar: { indicator: indicators, shape: 'circle', radius: '60%', name: { textStyle: { fontSize: 10, color: '#5A3A2A' } } },
+            series: [{
+                type: 'radar', data: [{ value: [houseB.scores.保温, houseB.scores.隔热, houseB.scores.通风, houseB.scores.防潮, houseB.scores.采光] }],
+                areaStyle: { color: 'rgba(192, 57, 43, 0.15)' }, lineStyle: { color: '#C0392B', width: 2 }, itemStyle: { color: '#C0392B' }
+            }]
+        }, true);
+
+        // 渲染对比表格
+        const fields = [
+            { label: '气候区', key: 'climate' },
+            { label: '墙体厚度', key: 'wall', unit: 'mm' },
+            { label: '屋顶坡度', key: 'pitch', unit: '°' },
+            { label: '窗墙比', key: 'ratio' },
+            { label: '年均温', key: 'temp', unit: '℃' },
+            { label: '年降水', key: 'precip', unit: 'mm' },
+            { label: '保温评分', key: 'scores.保温', unit: '/10' },
+            { label: '隔热评分', key: 'scores.隔热', unit: '/10' },
+            { label: '通风评分', key: 'scores.通风', unit: '/10' },
+            { label: '防潮评分', key: 'scores.防潮', unit: '/10' },
+            { label: '采光评分', key: 'scores.采光', unit: '/10' }
+        ];
+
+        function getVal(obj, path) {
+            return path.split('.').reduce((o, k) => (o && o[k] !== undefined) ? o[k] : '—', obj);
+        }
+
+        let tableHtml = `<table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+            <tr style="background:#2A3B4C; color:white;">
+                <th style="padding:8px 12px; text-align:left; border-radius:8px 0 0 0;">指标</th>
+                <th style="padding:8px 12px; text-align:center;">🏘️ ${houseA.name}</th>
+                <th style="padding:8px 12px; text-align:center;">🏘️ ${houseB.name}</th>
+                <th style="padding:8px 12px; text-align:center; border-radius:0 8px 0 0;">差异</th>
+            </tr>`;
+
+        fields.forEach(f => {
+            const valA = getVal(houseA, f.key);
+            const valB = getVal(houseB, f.key);
+            const numA = parseFloat(valA);
+            const numB = parseFloat(valB);
+            let diffStr = '—';
+            let diffColor = '#888';
+            if (!isNaN(numA) && !isNaN(numB)) {
+                const diff = numA - numB;
+                diffStr = (diff > 0 ? '+' : '') + diff.toFixed(1) + (f.unit || '');
+                diffColor = diff > 0 ? '#C0392B' : (diff < 0 ? '#2A7D32' : '#888');
+            }
+            tableHtml += `<tr style="border-bottom:1px solid #F0E5D2;">
+                <td style="padding:8px 12px; font-weight:600; color:#5A3A2A;">${f.label}</td>
+                <td style="padding:8px 12px; text-align:center;">${valA}${f.unit || ''}</td>
+                <td style="padding:8px 12px; text-align:center;">${valB}${f.unit || ''}</td>
+                <td style="padding:8px 12px; text-align:center; font-weight:700; color:${diffColor};">${diffStr}</td>
+            </tr>`;
+        });
+        tableHtml += '</table>';
+        document.getElementById('compareTable').innerHTML = tableHtml;
+    }
+
+    // 绑定选择事件
+    document.getElementById('compareSelectA').addEventListener('change', updateCompare);
+    document.getElementById('compareSelectB').addEventListener('change', updateCompare);
+    document.getElementById('closeCompareBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
+
+    // 初始渲染
+    updateCompare();
+}
+
+function showExportImageModal() {
+    const chartList = [
+        { id: 'mapChart', name: '🗺️ 民居地理分布' },
+        { id: 'barChart', name: '📊 多维特征对比' },
+        { id: 'radarChart', name: '⭐ 气候适应性评分' },
+        { id: 'roseChart', name: '🌸 气候区民居占比' },
+        { id: 'rankingChart', name: '🏆 排行榜' }
+    ];
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; justify-content:center; align-items:center; z-index:2000;';
+    const card = document.createElement('div');
+    card.style.cssText = 'background:white; border-radius:20px; width:90%; max-width:500px; padding:24px; box-shadow:0 10px 25px rgba(0,0,0,0.2);';
+    card.innerHTML = `
+        <h3 style="margin-bottom:20px; text-align:center;">🖼️ 选择要导出的图表</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            ${chartList.map(ch => `
+                <button class="export-chart-btn" data-chart="${ch.id}" style="
+                    padding:16px 12px; background:#F8F4EC; border:2px solid #E8E0D3;
+                    border-radius:16px; cursor:pointer; font-size:0.9rem; font-weight:600;
+                    color:#4A3A2A; transition:all 0.2s ease;
+                    display:flex; flex-direction:column; align-items:center; gap:6px;
+                " onmouseover="this.style.background='#2A3B4C'; this.style.color='white'; this.style.borderColor='#2A3B4C'"
+                   onmouseout="this.style.background='#F8F4EC'; this.style.color='#4A3A2A'; this.style.borderColor='#E8E0D3'">
+                    <span style="font-size:1.5rem;">${ch.name.split(' ')[0]}</span>
+                    <span>${ch.name}</span>
+                </button>
+            `).join('')}
+        </div>
+        <button id="closeExportBtn" style="margin-top:20px; width:100%; padding:10px; background:#E8E0D3; color:#4A3A2A; border:none; border-radius:30px; cursor:pointer; font-weight:600;">关闭</button>
+    `;
+    modal.appendChild(card);
+    document.body.appendChild(modal);
+
+    // 为每个按钮绑定导出事件
+    card.querySelectorAll('.export-chart-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const chartId = this.dataset.chart;
+            exportChartAsImage(chartId, this.querySelector('span:last-child').textContent);
+        });
+    });
+
+    document.getElementById('closeExportBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
+}
+
+function exportChartAsImage(chartId, filename) {
+    const chart = echarts.getInstanceByDom(document.getElementById(chartId));
+    if (!chart) {
+        showToast('图表未找到', 'error');
+        return;
+    }
+    const url = chart.getDataURL({
+        type: 'png',
+        pixelRatio: 2,
+        backgroundColor: '#fff',
+        excludeComponents: ['toolbox']
+    });
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}_${new Date().toISOString().slice(0,10)}.png`;
+    a.click();
+    showToast(`✅ ${filename} 已导出为图片`, 'success');
+}
+
+function showCaveSimulation() {
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; justify-content:center; align-items:center; z-index:2000;';
+    const card = document.createElement('div');
+    card.style.cssText = 'background:white; border-radius:20px; width:90%; max-width:650px; padding:20px; box-shadow:0 10px 25px rgba(0,0,0,0.2);';
+    card.innerHTML = '<h3 style="margin-bottom:15px; text-align:center;">🏺 陕北窑洞 · 冬暖夏凉动态模拟</h3><div id="tempSimChart" style="height:350px;"></div><button id="closeSimBtn" style="margin-top:15px; padding:8px 16px; background:#2A3B4C; color:white; border:none; border-radius:30px; cursor:pointer;">关闭</button>';
+    modal.appendChild(card);
+    document.body.appendChild(modal);
+    const simChart = echarts.init(document.getElementById('tempSimChart'));
+    simChart.setOption({
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'] },
+        yAxis: { type: 'value', name: '温度 (°C)' },
+        series: [
+            { name: '室外温度', type: 'line', data: [-5, -2, 5, 12, 18, 24, 28, 26, 20, 12, 4, -2], lineStyle: { color: '#91cc75', width: 2 } },
+            { name: '窑洞室内温度', type: 'line', data: [12, 12, 13, 14, 16, 17, 18, 18, 17, 16, 14, 13], lineStyle: { color: '#c23531', width: 3 }, symbol: 'circle' }
+        ],
+        legend: { data: ['室外温度', '窑洞室内温度'], left: 'center', top: 0 }
+    });
+    document.getElementById('closeSimBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
+}
+
+function renderMap() {
+    const scatterData = currentHouses.map(h => ({name: h.name, value: h.coords, climateZone: h.climate, temp: h.temp, itemStyle: {color: climateColors[h.climate]}}));
+
+    mapChart.setOption({
+        title: {text: '', left: 'center'},
+        tooltip: {
+            trigger: 'item',
+            formatter: function(params) {
+                if (params.seriesType === 'scatter') {
+                    return `<strong>${params.name}</strong><br>气候区：${params.data.climateZone}<br>年均温：${params.data.temp}℃`;
+                }
+                return params.name;
+            }
+        },
+        geo: {map: 'china', roam: true, zoom: 1.0, itemStyle: {borderColor: '#B87C4F', areaColor: '#F3E9D2'}, emphasis: {itemStyle: {areaColor: '#EEE4D4'}}},
+        series: [{name: '民居点位', type: 'scatter', coordinateSystem: 'geo', data: scatterData, symbolSize: 12, itemStyle: {borderColor: '#FFF', borderWidth: 2}}]
+    }, true);
+}
+
+function renderAllCharts() {
+    renderMap();
+    updateWallRanking();
+
+    // 柱状图 - 多系列对比（墙体厚度、窗墙比、屋顶坡度）
+    const wallData = currentHouses.map(h => ({value: h.wall, itemStyle: {color: climateColors[h.climate] || '#8B5A2B'}}));
+    const ratioData = currentHouses.map(h => ({value: h.ratio, itemStyle: {color: climateColors[h.climate] || '#F4A460'}}));
+    const pitchData = currentHouses.map(h => ({value: h.pitch, itemStyle: {color: climateColors[h.climate] || '#6B8E7B'}}));
+    barChart.setOption({
+        tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+        legend: {data: ['墙体厚度 (mm)', '窗墙比', '屋顶坡度 (°)'], left: 'left', top: 0},
+        grid: {containLabel: true, left: '4%', right: '4%'},
+        xAxis: {type: 'category', data: currentHouses.map(h => h.name), axisLabel: {rotate: 45, interval: 0, fontSize: 10}},
+        yAxis: [
+            {type: 'value', name: '墙体厚度 / 屋顶坡度', min: 0},
+            {type: 'value', name: '窗墙比', min: 0, max: 0.5}
+        ],
+        series: [
+            {name: '墙体厚度 (mm)', type: 'bar', data: wallData, barWidth: '40%'},
+            {name: '窗墙比', type: 'line', yAxisIndex: 1, data: ratioData, symbol: 'circle', lineStyle: {width: 2}},
+            {name: '屋顶坡度 (°)', type: 'bar', data: pitchData, barWidth: '40%'}
+        ]
+    }, true);
+
+    // 雷达图
+    const radarSeriesData = currentHouses.map(house => ({
+        name: house.name,
+        value: [house.scores.保温, house.scores.隔热, house.scores.通风, house.scores.防潮, house.scores.采光],
+        lineStyle: {color: climateColors[house.climate], width: 1.5},
+        areaStyle: {color: climateColors[house.climate] + '30'},
+        symbol: 'circle',
+        symbolSize: 4,
+        itemStyle: {color: climateColors[house.climate]}
+    }));
+
+    radarChart.setOption({
+        tooltip: {trigger: 'item', formatter: function(params) {
+            if (!params.value) return params.name;
+            const indicators = ['保温', '隔热', '通风', '防潮', '采光'];
+            let html = `<strong>${params.name}</strong><br>`;
+            params.value.forEach((val, idx) => {html += `${indicators[idx]}: ${val} 分<br>`;});
+            return html;
+        }},
+        legend: {orient: 'vertical', left: 'left', type: 'scroll', pageIconColor: '#6A994E', textStyle: {fontSize: 9}, formatter: name => name.length > 12 ? name.slice(0, 10) + '…' : name},
+        radar: {indicator: [{name: '保温', max: 10}, {name: '隔热', max: 10}, {name: '通风', max: 10}, {name: '防潮', max: 10}, {name: '采光', max: 10}], shape: 'circle', name: {textStyle: {fontSize: 11, fontWeight: 'bold', color: '#5A3A2A'}}, center: ['55%', '50%'], radius: '60%'},
+        series: [{type: 'radar', data: radarSeriesData, symbolSize: 3}]
+    }, true);
+
+    // 排行榜 - 横向条形图，避免名称重叠
+    const sortedByWall = [...currentHouses].sort((a, b) => b.wall - a.wall);
+    const rankingData = sortedByWall.map((h, idx) => ({
+        name: `${idx + 1}. ${h.name}`,
+        value: h.wall,
+        itemStyle: { color: climateColors[h.climate] || '#5470c6' }
+    }));
+
+    rankingChart.setOption({
+        title: { text: '', left: 'center' },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' },
+            formatter: function(params) {
+                const p = params[0];
+                const house = currentHouses.find(h => `${currentHouses.indexOf(h) + 1}. ${h.name}` === p.name || h.name === p.name.replace(/^\d+\.\s*/, ''));
+                if (house) {
+                    return `<strong>🏘️ ${house.name}</strong><br>
+                            墙体厚度：${house.wall}mm<br>
+                            气候区：${house.climate}<br>
+                            屋顶坡度：${house.pitch}°<br>
+                            窗墙比：${house.ratio}<br><br>💡 点击查看详情`;
+                }
+                return `${p.name}<br>墙体厚度：${p.value}mm<br><br>💡 点击查看详情`;
+            }
+        },
+        grid: { containLabel: true, left: '12%', right: '6%', top: '8%', bottom: '4%' },
+        xAxis: {
+            type: 'value',
+            name: '墙体厚度 (mm)',
+            nameTextStyle: { fontSize: 11, fontWeight: 'bold', color: '#5A3A2A' },
+            splitLine: { lineStyle: { type: 'dashed', color: '#E8E0D3' } },
+            axisLabel: { fontSize: 10 }
+        },
+        yAxis: {
+            type: 'category',
+            data: rankingData.map(d => d.name).reverse(),
+            axisLabel: { fontSize: 10, fontWeight: 'bold', color: '#5A3A2A' },
+            splitLine: { show: false },
+            axisLine: { show: false },
+            axisTick: { show: false }
+        },
+        series: [{
+            name: '墙体厚度',
+            type: 'bar',
+            data: [...rankingData].reverse(),
+            itemStyle: { borderRadius: [0, 4, 4, 0] },
+            barWidth: '60%',
+            emphasis: {
+                itemStyle: {
+                    shadowBlur: 6,
+                    shadowOffsetX: 0,
+                    shadowColor: 'rgba(0, 0, 0, 0.2)'
+                }
+            }
+        }]
+    }, true);
+
+    // 点击排行榜 → 高亮对应民居
+    rankingChart.off('click');
+    rankingChart.on('click', function(params) {
+        const nameRaw = params.name.replace(/^\d+\.\s*/, '');
+        const idx = currentHouses.findIndex(h => h.name === nameRaw);
+        if (idx !== -1) highlightHouse(idx);
+    });
+
+    // 散点图 - 气候因子相关性
+    renderScatterChart();
+
+    // 箱线图 - 各气候区指标分布
+    renderBoxPlotChart();
+
+    // 南丁格尔玫瑰图
+    renderRoseChart();
+
+    currentHighlightIndex = -1;
+    updateInfoPanel(null);
+    updateKPI();
+
+}
+
+function filterByPeriod(period) {
+    currentPeriod = period;
+    currentHouses = period === "all" ? [...allHouses] : allHouses.filter(h => h.period === period);
+
+    document.querySelectorAll('.timeline-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.period === period);
+    });
+    document.getElementById('periodNote').innerHTML = periodNotes[period] || periodNotes.all;
+
+    // 添加过渡动画：先淡出再淡入
+    const mainContent = document.querySelector('.main-content');
+    mainContent.style.transition = 'opacity 0.3s ease';
+    mainContent.style.opacity = '0.3';
+
+    setTimeout(() => {
+        renderAllCharts();
+        bindMapClick();
+        mainContent.style.opacity = '1';
+    }, 300);
+}
+
+function filterByClimate(value) {
+    let base = currentPeriod === "all" ? [...allHouses] : allHouses.filter(h => h.period === currentPeriod);
+    currentHouses = value === "all" ? base : base.filter(h => h.climate === value);
+
+    // 添加过渡动画：先淡出再淡入
+    const mainContent = document.querySelector('.main-content');
+    mainContent.style.transition = 'opacity 0.3s ease';
+    mainContent.style.opacity = '0.3';
+
+    setTimeout(() => {
+        renderAllCharts();
+        bindMapClick();
+        mainContent.style.opacity = '1';
+    }, 300);
+}
+
+function bindMapClick() {
+    mapChart.off('click');
+    mapChart.on('click', function(params) {
+        if (params.seriesType === 'scatter' && params.data) {
+            const idx = currentHouses.findIndex(h => h.name === params.data.name);
+            if (idx !== -1) highlightHouse(idx);
+        }
+    });
+}
+
+function renderBoxPlotChart() {
+    // 按气候区分组统计墙体厚度
+    const climateOrder = ['严寒区', '寒冷区', '夏热冬冷区', '夏热冬暖区', '温和区'];
+    const groups = {};
+    climateOrder.forEach(c => { groups[c] = []; });
+    currentHouses.forEach(h => {
+        if (groups[h.climate]) groups[h.climate].push(h.wall);
+    });
+
+    // 计算每组统计值 [min, Q1, median, Q3, max]
+    function calcStats(arr) {
+        if (arr.length === 0) return [0, 0, 0, 0, 0];
+        const sorted = [...arr].sort((a, b) => a - b);
+        const n = sorted.length;
+        const q1 = sorted[Math.floor(n * 0.25)];
+        const median = sorted[Math.floor(n * 0.5)];
+        const q3 = sorted[Math.floor(n * 0.75)];
+        return [sorted[0], q1, median, q3, sorted[n - 1]];
+    }
+
+    const boxData = climateOrder.filter(c => groups[c].length > 0).map(c => ({
+        name: c,
+        value: calcStats(groups[c]),
+        itemStyle: { color: climateColors[c] || '#5470c6' }
+    }));
+
+    // 准备离群点数据
+    const outlierData = [];
+    currentHouses.forEach(h => {
+        const stats = calcStats(groups[h.climate]);
+        const iqr = stats[3] - stats[1];
+        const lowerFence = stats[1] - 1.5 * iqr;
+        const upperFence = stats[3] + 1.5 * iqr;
+        if (h.wall < lowerFence || h.wall > upperFence) {
+            outlierData.push({
+                value: [h.climate, h.wall],
+                name: h.name,
+                itemStyle: { color: '#C0392B' }
+            });
+        }
+    });
+
+    boxPlotChart.setOption({
+        tooltip: {
+            trigger: 'item',
+            formatter: function(params) {
+                if (params.seriesType === 'boxplot') {
+                    const d = params.data;
+                    return `<strong>${d.name}</strong><br>
+                            最小值：${d.value[0]}mm<br>
+                            下四分位：${d.value[1]}mm<br>
+                            中位数：${d.value[2]}mm<br>
+                            上四分位：${d.value[3]}mm<br>
+                            最大值：${d.value[4]}mm<br>
+                            样本数：${groups[d.name].length}处`;
+                }
+                if (params.seriesType === 'scatter') {
+                    return `<strong>🏘️ ${params.data.name}</strong><br>墙体厚度：${params.data.value[1]}mm (离群点)`;
+                }
+                return '';
+            }
+        },
+        legend: {
+            data: ['墙体厚度分布', '离群点'],
+            left: 'left',
+            top: 0,
+            textStyle: { fontSize: 12, fontWeight: 'bold' }
+        },
+        grid: { containLabel: true, left: '6%', right: '6%', bottom: '15%' },
+        xAxis: {
+            type: 'category',
+            data: boxData.map(d => d.name),
+            axisLabel: { fontSize: 11, fontWeight: 'bold', color: '#5A3A2A' },
+            splitLine: { show: false }
+        },
+        yAxis: {
+            type: 'value',
+            name: '墙体厚度 (mm)',
+            nameTextStyle: { fontSize: 12, fontWeight: 'bold', color: '#5A3A2A' },
+            splitLine: { lineStyle: { type: 'dashed', color: '#E8E0D3' } }
+        },
+        series: [
+            {
+                name: '墙体厚度分布',
+                type: 'boxplot',
+                data: boxData,
+                itemStyle: {
+                    borderColor: '#2A3B4C',
+                    borderWidth: 2
+                },
+                boxWidth: ['40%', '60%'],
+                emphasis: {
+                    itemStyle: {
+                        shadowBlur: 8,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.2)'
+                    }
+                }
+            },
+            {
+                name: '离群点',
+                type: 'scatter',
+                data: outlierData,
+                symbolSize: 8,
+                symbol: 'diamond',
+                emphasis: {
+                    label: {
+                        show: true,
+                        formatter: function(params) {
+                            return params.data.name;
+                        },
+                        fontSize: 10,
+                        fontWeight: 'bold',
+                        color: '#2A3B4C'
+                    }
+                }
+            }
+        ]
+    }, true);
+
+    // 点击箱线图 → 筛选对应气候区
+    boxPlotChart.off('click');
+    boxPlotChart.on('click', function(params) {
+        if (params.seriesType === 'boxplot' && params.data) {
+            const climateName = params.data.name;
+            const selectEl = document.getElementById('climateFilter');
+            for (let opt of selectEl.options) {
+                if (opt.textContent.includes(climateName) || opt.value === climateName) {
+                    selectEl.value = opt.value;
+                    break;
+                }
+            }
+            filterByClimate(selectEl.value);
+        }
+    });
+}
+
+function renderScatterChart() {
+    // 计算线性回归趋势线 (年均温 vs 墙体厚度)
+    const scatterData = currentHouses.map((h, idx) => ({
+        value: [h.temp, h.wall],
+        name: h.name,
+        idx: idx,
+        itemStyle: { color: climateColors[h.climate] || '#5470c6' }
+    }));
+
+    // 线性回归计算 y = ax + b
+    const n = scatterData.length;
+    const sumX = scatterData.reduce((s, d) => s + d.value[0], 0);
+    const sumY = scatterData.reduce((s, d) => s + d.value[1], 0);
+    const sumXY = scatterData.reduce((s, d) => s + d.value[0] * d.value[1], 0);
+    const sumX2 = scatterData.reduce((s, d) => s + d.value[0] * d.value[0], 0);
+    const a = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const b = (sumY - a * sumX) / n;
+
+    // 趋势线数据点
+    const minX = Math.min(...scatterData.map(d => d.value[0]));
+    const maxX = Math.max(...scatterData.map(d => d.value[0]));
+    const trendData = [
+        [minX, a * minX + b],
+        [maxX, a * maxX + b]
+    ];
+
+    // 计算 R² (拟合优度)
+    const meanY = sumY / n;
+    const ssRes = scatterData.reduce((s, d) => s + Math.pow(d.value[1] - (a * d.value[0] + b), 2), 0);
+    const ssTot = scatterData.reduce((s, d) => s + Math.pow(d.value[1] - meanY, 2), 0);
+    const r2 = 1 - ssRes / ssTot;
+
+    scatterChart.setOption({
+        tooltip: {
+            trigger: 'item',
+            formatter: function(params) {
+                if (params.seriesType === 'scatter' && params.data) {
+                    const house = currentHouses.find(h => h.name === params.data.name);
+                    if (house) {
+                        return `<strong>🏘️ ${house.name}</strong><br>
+                                气候区：${house.climate}<br>
+                                年均温：${house.temp}℃<br>
+                                墙体厚度：${house.wall}mm<br>
+                                屋顶坡度：${house.pitch}°<br>
+                                窗墙比：${house.ratio}`;
+                    }
+                }
+                if (params.seriesType === 'line') {
+                    return `<strong>趋势线</strong><br>y = ${a.toFixed(2)}x + ${b.toFixed(2)}<br>R² = ${r2.toFixed(3)}`;
+                }
+                return '';
+            }
+        },
+        legend: {
+            data: ['民居数据点', '趋势线 (线性回归)'],
+            left: 'left',
+            top: 0,
+            textStyle: { fontSize: 12, fontWeight: 'bold' }
+        },
+        grid: { containLabel: true, left: '6%', right: '6%', bottom: '12%' },
+        xAxis: {
+            type: 'value',
+            name: '年均温 (℃)',
+            nameLocation: 'center',
+            nameGap: 35,
+            nameTextStyle: { fontSize: 12, fontWeight: 'bold', color: '#5A3A2A' },
+            splitLine: { lineStyle: { type: 'dashed', color: '#E8E0D3' } }
+        },
+        yAxis: {
+            type: 'value',
+            name: '墙体厚度 (mm)',
+            nameLocation: 'center',
+            nameGap: 50,
+            nameTextStyle: { fontSize: 12, fontWeight: 'bold', color: '#5A3A2A' },
+            splitLine: { lineStyle: { type: 'dashed', color: '#E8E0D3' } }
+        },
+        series: [
+            {
+                name: '民居数据点',
+                type: 'scatter',
+                data: scatterData,
+                symbolSize: function(val) {
+                    return 8 + (val[1] / 100);
+                },
+                emphasis: {
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.3)'
+                    },
+                    label: {
+                        show: true,
+                        formatter: function(params) {
+                            return params.data.name;
+                        },
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                        color: '#2A3B4C'
+                    }
+                }
+            },
+            {
+                name: '趋势线 (线性回归)',
+                type: 'line',
+                data: trendData,
+                smooth: false,
+                symbol: 'none',
+                lineStyle: {
+                    color: '#C0392B',
+                    width: 2,
+                    type: 'dashed'
+                },
+                markLine: {
+                    silent: true,
+                    data: [{
+                        yAxis: meanY,
+                        name: '平均墙体厚度',
+                        lineStyle: { color: '#888', type: 'dotted', width: 1 }
+                    }]
+                }
+            }
+        ]
+    }, true);
+
+    // 散点图 - 点击交互
+    scatterChart.off('click');
+    scatterChart.on('click', function(params) {
+        if (params.data && params.data.name) {
+            const idx = currentHouses.findIndex(h => h.name === params.data.name);
+            if (idx !== -1) highlightHouse(idx);
+        }
+    });
+}
+
+function initCharts() {
+    mapChart = echarts.init(document.getElementById('mapChart'));
+    barChart = echarts.init(document.getElementById('barChart'));
+    radarChart = echarts.init(document.getElementById('radarChart'));
+    rankingChart = echarts.init(document.getElementById('rankingChart'));
+    roseChart = echarts.init(document.getElementById('roseChart'));
+    scatterChart = echarts.init(document.getElementById('scatterChart'));
+    boxPlotChart = echarts.init(document.getElementById('boxPlotChart'));
+
+    renderAllCharts();
+    bindMapClick();
+
+    window.addEventListener('resize', () => {
+        mapChart.resize();
+        barChart.resize();
+        radarChart.resize();
+        rankingChart.resize();
+        roseChart.resize();
+        scatterChart.resize();
+        boxPlotChart.resize();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 时间轴事件
+    document.querySelectorAll('.timeline-btn').forEach(btn => {
+        btn.addEventListener('click', () => filterByPeriod(btn.dataset.period));
+    });
+
+    // 气候筛选事件
+    document.getElementById('climateFilter').addEventListener('change', (e) => filterByClimate(e.target.value));
+
+    initCharts();
+});
+</script>
+</body>
+</html>

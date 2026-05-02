@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>民居智慧实验室 · 交互式设计工坊</title>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="css/layout.css">
+    <style>
+        /* ===== 全局重置 & 设计变量 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2A3B4C;
+            --secondary: #6A994E;
+            --accent: #C0392B;
+            --accent-light: #E05A4A;
+            --gold: #D4AF37;
+            --bg-light: #FDF8F0;
+            --card-bg: #FFFFFF;
+            --text-dark: #2C3E2F;
+            --text-muted: #6B5A4E;
+            --border-light: #E8E0D3;
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 16px 32px rgba(0, 0, 0, 0.12);
+            --transition: all 0.25s ease;
+            --radius-card: 28px;
+            --radius-element: 20px;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', '思源黑体', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        /* ===== 顶部标题栏 ===== */
+        .lab-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .lab-title {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .lab-title h1 {
+            font-family: '思源宋体', '华文中宋', serif;
+            font-size: 1.6rem;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+
+        .lab-title .sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-left: 2px solid var(--gold);
+            padding-left: 12px;
+        }
+
+        .lab-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .lab-actions button {
+            padding: 8px 22px;
+            border-radius: 40px;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .btn-back {
+            background: var(--accent);
+            color: #FFF5E6;
+        }
+
+        .btn-back:hover {
+            background: var(--gold);
+            color: #9A2E22;
+            transform: translateY(-2px);
+        }
+
+        .btn-reset {
+            background: rgba(192, 57, 43, 0.1);
+            color: var(--accent);
+            border: 1px solid var(--gold) !important;
+        }
+
+        .btn-reset:hover {
+            background: var(--gold);
+            color: #9A2E22;
+            transform: translateY(-2px);
+        }
+
+        /* ===== 主布局：两栏 ===== */
+        .lab-container {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 24px;
+            align-items: start;
+            padding: 0 20px 20px;
+        }
+
+        /* ===== 左侧控制面板 ===== */
+        .control-panel {
+            background: var(--card-bg);
+            border-radius: var(--radius-card);
+            padding: 20px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+        }
+
+        .panel-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .panel-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .panel-section h3 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* 气候区选择 */
+        .climate-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .climate-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: var(--radius-element);
+            border: 1.5px solid var(--border-light);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: #FCF8F0;
+        }
+
+        .climate-option:hover {
+            border-color: var(--gold);
+            background: #FEF5E0;
+        }
+
+        .climate-option.active {
+            border-color: var(--accent);
+            background: #FDE8E0;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .climate-option .icon {
+            font-size: 1.3rem;
+        }
+
+        /* 策略提示 */
+        .strategy-box {
+            background: #FEF9F0;
+            border-radius: var(--radius-element);
+            padding: 14px;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            border-left: 4px solid var(--gold);
+            color: #4A3A2A;
+            min-height: 80px;
+        }
+
+        .strategy-box strong {
+            color: var(--accent);
+        }
+
+        /* 参数滑块 */
+        .slider-group {
+            margin-bottom: 14px;
+        }
+
+        .slider-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+        }
+
+        .slider-group label .value {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #E8E0D3;
+            border-radius: 10px;
+            outline: none;
+        }
+
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+
+        .slider-group input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: 2px solid white;
+        }
+
+        /* 朝向按钮组 */
+        .orientation-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .orientation-btn {
+            padding: 6px 16px;
+            border-radius: 40px;
+            border: 1.5px solid var(--border-light);
+            background: #FCF8F0;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .orientation-btn:hover {
+            border-color: var(--gold);
+            background: #FEF5E0;
+        }
+
+        .orientation-btn.active {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: white;
+        }
+
+        /* ===== 右侧显示区 ===== */
+        .display-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .canvas-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-card);
+            padding: 16px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+        }
+
+        .canvas-card h3 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        #sectionCanvas {
+            width: 100%;
+            height: 260px;
+            display: block;
+            border-radius: var(--radius-element);
+            background: #FCF8F0;
+        }
+
+        /* 评分行 */
+        .score-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .score-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-card);
+            padding: 16px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+        }
+
+        .score-card h3 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        #radarChart {
+            width: 100%;
+            height: 260px;
+        }
+
+        .score-body {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .total-score {
+            text-align: center;
+            padding: 12px;
+            background: #FEF9F0;
+            border-radius: var(--radius-element);
+            border: 1px solid var(--gold);
+        }
+
+        .total-score .number {
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: var(--accent);
+        }
+
+        .total-score .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .total-score .grade {
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .grade.excellent { color: #27AE60; }
+        .grade.good { color: #2E86C1; }
+        .grade.fair { color: #F39C12; }
+        .grade.poor { color: #E74C3C; }
+
+        .feedback-box {
+            background: #F0F7F0;
+            border-radius: var(--radius-element);
+            padding: 12px 14px;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            border-left: 4px solid var(--secondary);
+            min-height: 60px;
+        }
+
+        .reference-box {
+            background: #FEF9F0;
+            border-radius: var(--radius-element);
+            padding: 12px 14px;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            border-left: 4px solid var(--gold);
+        }
+
+        .reference-box strong {
+            color: var(--accent);
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 1100px) {
+            .lab-container {
+                grid-template-columns: 1fr;
+            }
+            .control-panel {
+                order: 2;
+            }
+            .display-area {
+                order: 1;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .lab-title h1 { font-size: 1.2rem; }
+            .score-row { grid-template-columns: 1fr; }
+            .lab-header { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 顶部导航栏 -->
+    <div class="hero-nav">
+        <div class="nav-header">
+            <div class="logo-area">
+                <span class="logo-icon">🏮</span>
+                <h1>栖居之道</h1>
+                <span class="title-sub">气候适应性智慧 · 实验室</span>
+            </div>
+            <div class="nav-links">
+                <span id="user-info"></span>
+                <button id="login-btn" class="login-btn" onclick="showLoginModal()">登录/注册</button>
+                <button id="logout-btn" class="logout-btn" style="display: none;" onclick="logout()">退出</button>
+                <button id="favorites-btn" class="favorites-btn" style="display: none;" onclick="window.location.href='favorites.html'">我的收藏</button>
+            </div>
+        </div>
+        <div class="nav-tabs">
+            <a href="index.html" class="nav-tab">📊 总览</a>
+            <a href="houses.html" class="nav-tab">🏘️ 民居库</a>
+            <a href="map.html" class="nav-tab">🌍 气候分析</a>
+            <a href="lab.html" class="nav-tab active">🧪 实验室</a>
+            <a href="tools.html" class="nav-tab">🧰 工具箱</a>
+            <a href="profile.html" class="nav-tab">👤 个人中心</a>
+        </div>
+        <div class="intro-section">
+            <div class="intro-text">
+                <p>"<strong>天人合一，道法自然</strong> —— 调节参数，亲手设计气候适应性民居。"</p>
+            </div>
+        </div>
+    </div>
+
+<!-- ===== 顶部标题栏 ===== -->
+<div class="lab-header">
+    <div class="lab-title">
+        <h1>🧪 民居智慧实验室</h1>
+        <span class="sub">交互式设计工坊</span>
+    </div>
+    <div class="lab-actions">
+        <button class="btn-reset" id="resetBtn">🔄 重置参数</button>
+        <button class="btn-back" id="backBtn">🔙 返回主页面</button>
+    </div>
+</div>
+
+<!-- ===== 主布局 ===== -->
+<div class="lab-container">
+
+    <!-- 左侧：控制面板 -->
+    <div class="control-panel">
+
+        <!-- 选择气候区 -->
+        <div class="panel-section">
+            <h3>📍 选择气候区</h3>
+            <div class="climate-options" id="climateOptions">
+                <label class="climate-option active" data-climate="dry_cold">
+                    <span class="icon">🏜️</span>
+                    <span>干冷华北 · 冬寒夏燥</span>
+                </label>
+                <label class="climate-option" data-climate="wet_cold">
+                    <span class="icon">🌧️</span>
+                    <span>湿冷江南 · 高湿多雨</span>
+                </label>
+                <label class="climate-option" data-climate="hot_wet">
+                    <span class="icon">☀️</span>
+                    <span>湿热岭南 · 高温高湿</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- 核心策略 -->
+        <div class="panel-section">
+            <h3>📖 核心策略</h3>
+            <div class="strategy-box" id="strategyBox">
+                <strong>🏜️ 干冷华北</strong>：厚墙蓄热、南向开窗、火炕取暖、紧凑布局。<br>
+                参考民居：<strong>北京四合院</strong>（青砖厚墙 500mm，窗墙比 0.18）
+            </div>
+        </div>
+
+        <!-- 调节参数 -->
+        <div class="panel-section">
+            <h3>🔧 调节设计参数</h3>
+
+            <div class="slider-group">
+                <label>窗墙比 <span class="value" id="ratioVal">0.18</span></label>
+                <input type="range" id="ratioSlider" min="0.05" max="0.40" step="0.01" value="0.18">
+            </div>
+
+            <div class="slider-group">
+                <label>墙体厚度 (mm) <span class="value" id="wallVal">500</span></label>
+                <input type="range" id="wallSlider" min="100" max="1000" step="10" value="500">
+            </div>
+
+            <div class="slider-group">
+                <label>院落高宽比 <span class="value" id="courtyardVal">1.0</span></label>
+                <input type="range" id="courtyardSlider" min="0.3" max="2.5" step="0.1" value="1.0">
+            </div>
+
+            <div class="slider-group">
+                <label>朝向</label>
+                <div class="orientation-options" id="orientationOptions">
+                    <button class="orientation-btn" data-orient="south">⬇️ 南</button>
+                    <button class="orientation-btn active" data-orient="southeast">↘️ 东南</button>
+                    <button class="orientation-btn" data-orient="east">➡️ 东</button>
+                    <button class="orientation-btn" data-orient="southwest">↙️ 西南</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：显示区 -->
+    <div class="display-area">
+
+        <!-- 2D 剖面图 -->
+        <div class="canvas-card">
+            <h3>🏗️ 建筑剖面示意</h3>
+            <canvas id="sectionCanvas"></canvas>
+        </div>
+
+        <!-- 评分行 -->
+        <div class="score-row">
+            <!-- 雷达图 -->
+            <div class="score-card">
+                <h3>⭐ 五维评分</h3>
+                <div id="radarChart"></div>
+            </div>
+
+            <!-- 总分 & 反馈 -->
+            <div class="score-card">
+                <h3>📊 综合评估</h3>
+                <div class="score-body">
+                    <div class="total-score">
+                        <div class="label">综合得分</div>
+                        <div class="number" id="totalScore">0</div>
+                        <div class="grade" id="gradeLabel">—</div>
+                    </div>
+                    <div class="feedback-box" id="feedbackBox">
+                        💡 调节左侧参数，查看设计评分与优化建议。
+                    </div>
+                    <div class="reference-box" id="referenceBox" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 页脚 -->
+<footer class="site-footer">
+    <p>🏮 栖居之道 —— 中国古代民居的气候适应性智慧图谱</p>
+    <p>©2026 中国大学生计算机设计大赛 | 云南大学 信息学院</p>
+</footer>
+</div>
+
+<!-- 返回顶部 -->
+<button id="backToTop" title="返回顶部">↑</button>
+
+<!-- Toast通知 -->
+<div id="toast" class="toast"></div>
+
+<!-- 登录模态框 -->
+<div id="login-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modal-title">用户登录</h2>
+        <form id="auth-form">
+            <div class="form-group">
+                <label for="email">邮箱：</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码：</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" id="auth-submit-btn" class="modal-btn">登录</button>
+        </form>
+        <p id="auth-toggle" style="text-align: center; margin-top: 16px; color: var(--text-dark);">
+            还没有账号？<a href="#" onclick="toggleAuthMode(); return false;" style="color: var(--primary); text-decoration: none; font-weight: 600;">立即注册</a>
+        </p>
+    </div>
+</div>
+
+<script src="js/shared.js"></script>
+
+<script>
+(function() {
+    // ============================================================
+    //  1. 数据定义
+    // ============================================================
+
+    // 气候区参考数据
+    const CLIMATE_DATA = {
+        dry_cold: {
+            name: '干冷华北',
+            icon: '🏜️',
+            strategy: '厚墙蓄热、南向开窗、火炕取暖、紧凑布局。',
+            reference: '北京四合院',
+            refDesc: '青砖厚墙 500mm，窗墙比 0.18，院落方正',
+            weights: {
+                ventilation: 0.10,
+                insulation: 0.30,
+                moisture: 0.10,
+                shading: 0.20,
+                material: 0.30
+            },
+            refParams: { ratio: 0.18, wall: 500, courtyard: 1.0, orient: 'south' },
+            refScores: { ventilation: 5, insulation: 7, moisture: 4, shading: 6, material: 7 }
+        },
+        wet_cold: {
+            name: '湿冷江南',
+            icon: '🌧️',
+            strategy: '天井拔风、高墙遮阳、坡顶排水、架空防潮。',
+            reference: '徽派建筑 / 江南天井院',
+            refDesc: '小青砖墙 250mm，天井高深比约 1.2，窗墙比 0.25',
+            weights: {
+                ventilation: 0.25,
+                insulation: 0.15,
+                moisture: 0.30,
+                shading: 0.20,
+                material: 0.10
+            },
+            refParams: { ratio: 0.25, wall: 250, courtyard: 1.2, orient: 'southeast' },
+            refScores: { ventilation: 8, insulation: 5, moisture: 7, shading: 7, material: 6 }
+        },
+        hot_wet: {
+            name: '湿热岭南',
+            icon: '☀️',
+            strategy: '底层架空、深檐遮阳、通透开窗、高坡顶排水。',
+            reference: '广西干栏式 / 傣族竹楼',
+            refDesc: '轻质木墙，窗墙比 0.30~0.35，底层架空 1.5m',
+            weights: {
+                ventilation: 0.30,
+                insulation: 0.10,
+                moisture: 0.25,
+                shading: 0.25,
+                material: 0.10
+            },
+            refParams: { ratio: 0.32, wall: 120, courtyard: 0.5, orient: 'south' },
+            refScores: { ventilation: 9, insulation: 4, moisture: 8, shading: 8, material: 5 }
+        }
+    };
+
+    // 朝向角度映射（用于评分）
+    const ORIENT_MAP = {
+        south: 0,
+        southeast: 22.5,
+        east: 45,
+        southwest: 45
+    };
+
+    // ============================================================
+    //  2. 状态
+    // ============================================================
+
+    let currentClimate = 'dry_cold';
+    let currentOrient = 'southeast';
+    let radarChart = null;
+
+    // ============================================================
+    //  3. DOM 引用
+    // ============================================================
+
+    const canvas = document.getElementById('sectionCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const ratioSlider = document.getElementById('ratioSlider');
+    const wallSlider = document.getElementById('wallSlider');
+    const courtyardSlider = document.getElementById('courtyardSlider');
+    const ratioVal = document.getElementById('ratioVal');
+    const wallVal = document.getElementById('wallVal');
+    const courtyardVal = document.getElementById('courtyardVal');
+
+    const strategyBox = document.getElementById('strategyBox');
+    const feedbackBox = document.getElementById('feedbackBox');
+    const referenceBox = document.getElementById('referenceBox');
+    const totalScoreEl = document.getElementById('totalScore');
+    const gradeLabel = document.getElementById('gradeLabel');
+
+    // ============================================================
+    //  4. Canvas 剖面绘制
+    // ============================================================
+
+    function resizeCanvas() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const w = rect.width - 32;
+        canvas.width = Math.max(300, w);
+        canvas.height = 260;
+        drawSection();
+    }
+
+    function drawSection() {
+        const W = canvas.width;
+        const H = canvas.height;
+        const pad = 30;
+        const groundY = H - pad;
+
+        const ratio = parseFloat(ratioSlider.value);
+        const wall = parseFloat(wallSlider.value);
+        const courtyard = parseFloat(courtyardSlider.value);
+
+        ctx.clearRect(0, 0, W, H);
+
+        // ---- 地面 ----
+        ctx.fillStyle = '#D4C5A9';
+        ctx.fillRect(0, groundY, W, 6);
+        ctx.fillStyle = '#B8A88A';
+        for (let x = 0; x < W; x += 12) {
+            ctx.fillRect(x, groundY + 6, 6, 8);
+        }
+
+        // ---- 建筑尺寸计算 ----
+        const houseW = Math.min(220, W * 0.45);
+        const houseH = Math.min(140, H * 0.55);
+        const wallThick = Math.max(4, wall / 1000 * houseW * 0.08);
+        const roofH = houseH * 0.45;
+
+        const centerX = W / 2;
+        const leftX = centerX - houseW / 2;
+        const rightX = centerX + houseW / 2;
+        const roofTopY = groundY - houseH - roofH;
+        const wallTopY = groundY - houseH;
+
+        // ---- 院落 ----
+        const courtW = houseW * courtyard * 0.3;
+        if (courtW > 10) {
+            ctx.fillStyle = '#E8E0D3';
+            ctx.fillRect(leftX - courtW - 8, wallTopY + 20, courtW, houseH - 20);
+            ctx.strokeStyle = '#B8A88A';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(leftX - courtW - 8, wallTopY + 20, courtW, houseH - 20);
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#8A7A6A';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('院落', leftX - courtW / 2 - 4, wallTopY + houseH / 2 + 4);
+        }
+
+        // ---- 墙体 ----
+        ctx.fillStyle = '#D4A574';
+        ctx.fillRect(leftX - wallThick, wallTopY, houseW + wallThick * 2, houseH);
+
+        ctx.strokeStyle = '#C49564';
+        ctx.lineWidth = 0.5;
+        for (let y = wallTopY + 8; y < groundY; y += 12) {
+            ctx.beginPath();
+            ctx.moveTo(leftX - wallThick, y);
+            ctx.lineTo(rightX + wallThick, y);
+            ctx.stroke();
+        }
+
+        // ---- 窗户 ----
+        const winW = Math.max(10, houseW * ratio * 0.6);
+        const winH = Math.max(8, houseH * 0.25);
+        const winY = wallTopY + houseH * 0.25;
+
+        // 左窗
+        ctx.fillStyle = '#A8D8EA';
+        ctx.fillRect(leftX + houseW * 0.15, winY, winW, winH);
+        ctx.strokeStyle = '#5A3A2A';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(leftX + houseW * 0.15, winY, winW, winH);
+        ctx.beginPath();
+        ctx.moveTo(leftX + houseW * 0.15 + winW / 2, winY);
+        ctx.lineTo(leftX + houseW * 0.15 + winW / 2, winY + winH);
+        ctx.moveTo(leftX + houseW * 0.15, winY + winH / 2);
+        ctx.lineTo(leftX + houseW * 0.15 + winW, winY + winH / 2);
+        ctx.stroke();
+
+        // 右窗
+        ctx.fillStyle = '#A8D8EA';
+        ctx.fillRect(rightX - houseW * 0.15 - winW, winY, winW, winH);
+        ctx.strokeStyle = '#5A3A2A';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(rightX - houseW * 0.15 - winW, winY, winW, winH);
+        ctx.beginPath();
+        ctx.moveTo(rightX - houseW * 0.15 - winW / 2, winY);
+        ctx.lineTo(rightX - houseW * 0.15 - winW / 2, winY + winH);
+        ctx.moveTo(rightX - houseW * 0.15 - winW, winY + winH / 2);
+        ctx.lineTo(rightX - houseW * 0.15, winY + winH / 2);
+        ctx.stroke();
+
+        // ---- 屋顶 ----
+        ctx.beginPath();
+        ctx.moveTo(leftX - wallThick - 10, wallTopY);
+        ctx.lineTo(centerX, roofTopY);
+        ctx.lineTo(rightX + wallThick + 10, wallTopY);
+        ctx.closePath();
+        ctx.fillStyle = '#8B4513';
+        ctx.fill();
+        ctx.strokeStyle = '#5A2A0A';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.strokeStyle = '#A0522D';
+        ctx.lineWidth = 0.8;
+        for (let i = 0; i < 6; i++) {
+            const t = (i + 1) / 7;
+            const lx = leftX - wallThick - 10 + (centerX - leftX + wallThick + 10) * t;
+            const ly = wallTopY - (wallTopY - roofTopY) * t;
+            const rx = rightX + wallThick + 10 - (rightX + wallThick + 10 - centerX) * t;
+            ctx.beginPath();
+            ctx.moveTo(lx, ly);
+            ctx.lineTo(rx, ly);
+            ctx.stroke();
+        }
+
+        // ---- 标注 ----
+        ctx.fillStyle = '#5A3A2A';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('墙体 ' + wall + 'mm', centerX, groundY + 22);
+        ctx.fillText('窗墙比 ' + ratio.toFixed(2), centerX, roofTopY - 10);
+        const orientNames = { south: '南', southeast: '东南', east: '东', southwest: '西南' };
+        ctx.fillText('朝向 ' + (orientNames[currentOrient] || currentOrient), rightX + 40, wallTopY + 30);
+    }
+
+    // ============================================================
+    //  5. 策略更新
+    // ============================================================
+
+    function updateStrategy() {
+        const data = CLIMATE_DATA[currentClimate];
+        strategyBox.innerHTML =
+            '<strong>' + data.icon + ' ' + data.name + '</strong>：' + data.strategy +
+            '<br>参考民居：<strong>' + data.reference + '</strong>（' + data.refDesc + '）';
+    }
+
+    // ============================================================
+    //  6. 评分引擎
+    // ============================================================
+
+    function evaluateDesign() {
+        const ratio = parseFloat(ratioSlider.value);
+        const wall = parseFloat(wallSlider.value);
+        const courtyard = parseFloat(courtyardSlider.value);
+        const orient = currentOrient;
+        const data = CLIMATE_DATA[currentClimate];
+
+        // 通风
+        let ventilation = 0;
+        ventilation += ratio * 20;
+        ventilation += (1 - ORIENT_MAP[orient] / 90) * 2;
+        ventilation += Math.min(courtyard * 1.5, 2);
+        ventilation = Math.min(10, Math.max(1, ventilation));
+
+        // 保温
+        let insulation = 0;
+        insulation += (wall / 1000) * 6;
+        insulation += (1 - ratio) * 3;
+        insulation += (1 - Math.min(courtyard / 2, 1)) * 1;
+        insulation = Math.min(10, Math.max(1, insulation));
+
+        // 防潮
+        let moisture = 0;
+        moisture += (1 - wall / 1000) * 3;
+        moisture += ratio * 15;
+        moisture += Math.min(courtyard, 1) * 1;
+        moisture = Math.min(10, Math.max(1, moisture));
+
+        // 遮阳隔热
+        let shading = 0;
+        shading += (wall / 1000) * 4;
+        shading += (1 - ratio) * 3;
+        shading += (1 - ORIENT_MAP[orient] / 90) * 3;
+        shading = Math.min(10, Math.max(1, shading));
+
+        // 材料适配
+        let material = 0;
+        if (currentClimate === 'dry_cold') {
+            material = Math.min(10, (wall / 100) * 1.2);
+        } else if (currentClimate === 'wet_cold') {
+            material = 10 - Math.abs(wall - 250) / 100;
+        } else {
+            material = 10 - Math.abs(wall - 150) / 100;
+        }
+        material = Math.min(10, Math.max(1, material));
+
+        const scores = {
+            ventilation: Math.round(ventilation * 10) / 10,
+            insulation: Math.round(insulation * 10) / 10,
+            moisture: Math.round(moisture * 10) / 10,
+            shading: Math.round(shading * 10) / 10,
+            material: Math.round(material * 10) / 10
+        };
+
+        // 加权总分
+        const w = data.weights;
+        const total = Math.round(
+            scores.ventilation * w.ventilation +
+            scores.insulation * w.insulation +
+            scores.moisture * w.moisture +
+            scores.shading * w.shading +
+            scores.material * w.material
+        );
+
+        // 等级
+        let gradeText, gradeClass;
+        if (total >= 8) {
+            gradeText = '🏆 卓越';
+            gradeClass = 'excellent';
+        } else if (total >= 6.5) {
+            gradeText = '👍 良好';
+            gradeClass = 'good';
+        } else if (total >= 4.5) {
+            gradeText = '📈 一般';
+            gradeClass = 'fair';
+        } else {
+            gradeText = '🔧 待优化';
+            gradeClass = 'poor';
+        }
+
+        updateRadar(scores);
+        totalScoreEl.textContent = total.toFixed(1);
+        gradeLabel.textContent = gradeText;
+        gradeLabel.className = 'grade ' + gradeClass;
+        generateFeedback(scores, total, data);
+        drawSection();
+    }
+
+    // ============================================================
+    //  7. 雷达图
+    // ============================================================
+
+    function updateRadar(scores) {
+        if (!radarChart) {
+            radarChart = echarts.init(document.getElementById('radarChart'));
+        }
+
+        const data = CLIMATE_DATA[currentClimate];
+        const ref = data.refScores;
+
+        const option = {
+            tooltip: {
+                trigger: 'item'
+            },
+            radar: {
+                indicator: [
+                    { name: '通风', max: 10 },
+                    { name: '保温', max: 10 },
+                    { name: '防潮', max: 10 },
+                    { name: '遮阳隔热', max: 10 },
+                    { name: '材料适配', max: 10 }
+                ],
+                center: ['50%', '50%'],
+                radius: '65%',
+                shape: 'polygon',
+                name: {
+                    textStyle: {
+                        color: '#5A3A2A',
+                        fontSize: 11,
+                        fontWeight: 600
+                    }
+                }
+            },
+            series: [{
+                type: 'radar',
+                data: [
+                    {
+                        value: [
+                            scores.ventilation,
+                            scores.insulation,
+                            scores.moisture,
+                            scores.shading,
+                            scores.material
+                        ],
+                        name: '你的设计',
+                        areaStyle: {
+                            color: 'rgba(192, 57, 43, 0.2)'
+                        },
+                        lineStyle: {
+                            color: '#C0392B',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#C0392B'
+                        }
+                    },
+                    {
+                        value: [
+                            ref.ventilation,
+                            ref.insulation,
+                            ref.moisture,
+                            ref.shading,
+                            ref.material
+                        ],
+                        name: data.reference,
+                        areaStyle: {
+                            color: 'rgba(212, 175, 55, 0.15)'
+                        },
+                        lineStyle: {
+                            color: '#D4AF37',
+                            width: 2,
+                            type: 'dashed'
+                        },
+                        itemStyle: {
+                            color: '#D4AF37'
+                        }
+                    }
+                ]
+            }]
+        };
+
+        radarChart.setOption(option, true);
+    }
+
+    // ============================================================
+    //  8. 反馈生成
+    // ============================================================
+
+    function generateFeedback(scores, total, data) {
+        const ref = data.refScores;
+        const ratio = parseFloat(ratioSlider.value);
+        const wall = parseFloat(wallSlider.value);
+
+        const dims = [
+            { key: 'ventilation', label: '通风', score: scores.ventilation },
+            { key: 'insulation', label: '保温', score: scores.insulation },
+            { key: 'moisture', label: '防潮', score: scores.moisture },
+            { key: 'shading', label: '遮阳隔热', score: scores.shading },
+            { key: 'material', label: '材料适配', score: scores.material }
+        ];
+        dims.sort((a, b) => a.score - b.score);
+        const weakest = dims[0];
+        const secondWeak = dims[1];
+
+        let refCompare = '';
+        if (total >= 7) {
+            refCompare = '🎯 你的设计已接近 <strong>' + data.reference + '</strong> 的智慧水准！';
+        } else if (total >= 5) {
+            refCompare = '📐 与 <strong>' + data.reference + '</strong> 相比，仍有优化空间。';
+        } else {
+            refCompare = '💪 参考 <strong>' + data.reference + '</strong>（' + data.refDesc + '），继续改进！';
+        }
+
+        let advice = '';
+        const weakLabel = weakest.label;
+        const secondLabel = secondWeak.label;
+
+        if (weakest.key === 'ventilation') {
+            advice = '尝试增大窗墙比（当前 ' + ratio.toFixed(2) + '），或选择更通透的朝向。';
+        } else if (weakest.key === 'insulation') {
+            advice = '考虑增加墙体厚度（当前 ' + wall + 'mm），或减小窗墙比减少热散失。';
+        } else if (weakest.key === 'moisture') {
+            advice = '适当增大窗墙比和院落空间，改善通风防潮能力。';
+        } else if (weakest.key === 'shading') {
+            advice = '增加墙体厚度或调整朝向，提升遮阳隔热性能。';
+        } else {
+            advice = '墙体厚度 ' + wall + 'mm 在当前气候区可进一步优化。';
+        }
+
+        feedbackBox.innerHTML =
+            '<strong>📋 评估报告</strong><br>' +
+            '优势：<strong>' + dims[dims.length - 1].label + '</strong>（' + dims[dims.length - 1].score.toFixed(1) + '分）<br>' +
+            '待改进：<strong>' + weakLabel + '</strong>（' + weakest.score.toFixed(1) + '分）、' + secondLabel + '（' + secondWeak.score.toFixed(1) + '分）<br>' +
+            '💡 ' + advice + '<br>' +
+            refCompare;
+
+        referenceBox.style.display = 'block';
+        referenceBox.innerHTML =
+            '<strong>🏛️ 参考：' + data.reference + '</strong><br>' +
+            '窗墙比 ' + data.refParams.ratio + ' | 墙体 ' + data.refParams.wall + 'mm | ' +
+            '通风 ' + ref.ventilation + ' 保温 ' + ref.insulation + ' 防潮 ' + ref.moisture;
+    }
+
+    // ============================================================
+    //  9. 事件绑定
+    // ============================================================
+
+    function bindEvents() {
+        document.querySelectorAll('.climate-option').forEach(function(el) {
+            el.addEventListener('click', function() {
+                document.querySelectorAll('.climate-option').forEach(function(o) {
+                    o.classList.remove('active');
+                });
+                this.classList.add('active');
+                currentClimate = this.dataset.climate;
+                updateStrategy();
+                evaluateDesign();
+            });
+        });
+
+        ratioSlider.addEventListener('input', function() {
+            ratioVal.textContent = parseFloat(this.value).toFixed(2);
+            evaluateDesign();
+        });
+        wallSlider.addEventListener('input', function() {
+            wallVal.textContent = this.value;
+            evaluateDesign();
+        });
+        courtyardSlider.addEventListener('input', function() {
+            courtyardVal.textContent = parseFloat(this.value).toFixed(1);
+            evaluateDesign();
+        });
+
+        document.querySelectorAll('.orientation-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.orientation-btn').forEach(function(b) {
+                    b.classList.remove('active');
+                });
+                this.classList.add('active');
+                currentOrient = this.dataset.orient;
+                evaluateDesign();
+            });
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            ratioSlider.value = '0.18';
+            wallSlider.value = '500';
+            courtyardSlider.value = '1.0';
+            ratioVal.textContent = '0.18';
+            wallVal.textContent = '500';
+            courtyardVal.textContent = '1.0';
+            document.querySelectorAll('.orientation-btn').forEach(function(b) {
+                b.classList.remove('active');
+            });
+            document.querySelector('.orientation-btn[data-orient="southeast"]').classList.add('active');
+            currentOrient = 'southeast';
+            evaluateDesign();
+        });
+
+        document.getElementById('backBtn').addEventListener('click', function() {
+            window.location.href = 'index.html';
+        });
+
+        window.addEventListener('resize', function() {
+            resizeCanvas();
+            if (radarChart) radarChart.resize();
+        });
+    }
+
+    // ============================================================
+    //  10. 初始化
+    // ============================================================
+
+    resizeCanvas();
+    bindEvents();
+    document.querySelector('.climate-option[data-climate="dry_cold"]').click();
+})();
+</script>
+</body>
+</html>
