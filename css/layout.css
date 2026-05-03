@@ -485,13 +485,30 @@ body {
 /* 页脚 */
 .site-footer {
     margin-top: 56px;
-    padding: 24px;
+    padding: 28px 24px;
     background: #2C2B28;
     border-radius: 40px;
     text-align: center;
     color: #EADBB0;
     font-size: 0.75rem;
     letter-spacing: 0.5px;
+}
+
+.site-footer p {
+    margin-bottom: 6px;
+}
+
+.site-footer p:last-child {
+    margin-bottom: 0;
+}
+
+.footer-map-source {
+    margin-top: 8px;
+    font-size: 0.7rem;
+    color: #C8B896;
+    border-top: 1px solid rgba(212, 175, 55, 0.2);
+    padding-top: 8px;
+    display: inline-block;
 }
 
 /* 返回顶部 */
