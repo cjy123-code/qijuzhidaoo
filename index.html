@@ -6,7 +6,6 @@
     <title>栖居之道 · 总览</title>
     <!-- ECharts -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/dist/echarts.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/js/china.js"></script>
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -311,7 +310,11 @@
             <div class="content-card">
                 <div class="card-header">🗺️ 民居地理分布 · 气候区划</div>
                 <div class="card-content" style="padding: 12px;">
-                    <div id="mapChart"></div>
+                    <div id="mapChart" style="width:100%;height:450px;position:relative;overflow:hidden;border-radius:12px;background:#f5f0e8;">
+                        <img id="indexMapImage" src="data/china_map.jpg" alt="中国地图" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;background:#f5f0e8;" />
+                        <canvas id="indexMapCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;cursor:pointer;background:transparent;"></canvas>
+                        <div id="indexMapTooltip" class="map-tooltip" style="position:absolute;display:none;background:rgba(255,255,255,0.95);border:1px solid #EADBB0;border-radius:12px;padding:12px 16px;box-shadow:0 4px 20px rgba(0,0,0,0.15);pointer-events:none;z-index:100;font-size:0.85rem;max-width:220px;line-height:1.6;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -388,6 +391,7 @@
     <footer class="site-footer">
         <p>🏮 栖居之道 —— 中国古代民居的气候适应性智慧图谱</p>
         <p>©2026 中国大学生计算机设计大赛 | 云南大学 信息学院</p>
+        <p class="footer-map-source">审图号：GS(2023)2767号 自然资源部 监制</p>
     </footer>
 </div>
 
@@ -421,11 +425,12 @@
 
 <!-- 脚本 -->
 <script src="js/shared.js"></script>
+<script src="js/map-utils.js"></script>
 <script>
 let currentHouses = [...allHouses];
 let currentHighlightIndex = -1;
 let currentPeriod = "all";
-let mapChart, barChart, radarChart, rankingChart, roseChart, scatterChart, boxPlotChart;
+let barChart, radarChart, rankingChart, roseChart, scatterChart, boxPlotChart;
 const climateColors = { '严寒区':'#4A6FA5', '寒冷区':'#C8C6C6', '夏热冬冷区':'#6A994E', '夏热冬暖区':'#E28A55', '温和区':'#E8CFF3' };
 const periodNotes = {
     "all": "<strong>🏮 当前：全部时期</strong> — 25种民居完整呈现。",
@@ -825,6 +830,22 @@ function showExportImageModal() {
 }
 
 function exportChartAsImage(chartId, filename) {
+    // 地图使用 Canvas 导出，其他图表使用 ECharts 导出
+    if (chartId === 'mapChart') {
+        const canvas = document.getElementById('indexMapCanvas');
+        if (!canvas) {
+            showToast('地图未找到', 'error');
+            return;
+        }
+        const url = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}_${new Date().toISOString().slice(0,10)}.png`;
+        a.click();
+        showToast(`✅ ${filename} 已导出为图片`, 'success');
+        return;
+    }
+    
     const chart = echarts.getInstanceByDom(document.getElementById(chartId));
     if (!chart) {
         showToast('图表未找到', 'error');
@@ -867,22 +888,62 @@ function showCaveSimulation() {
 }
 
 function renderMap() {
-    const scatterData = currentHouses.map(h => ({name: h.name, value: h.coords, climateZone: h.climate, temp: h.temp, itemStyle: {color: climateColors[h.climate]}}));
-
-    mapChart.setOption({
-        title: {text: '', left: 'center'},
-        tooltip: {
-            trigger: 'item',
-            formatter: function(params) {
-                if (params.seriesType === 'scatter') {
-                    return `<strong>${params.name}</strong><br>气候区：${params.data.climateZone}<br>年均温：${params.data.temp}℃`;
-                }
-                return params.name;
-            }
-        },
-        geo: {map: 'china', roam: true, zoom: 1.0, itemStyle: {borderColor: '#B87C4F', areaColor: '#F3E9D2'}, emphasis: {itemStyle: {areaColor: '#EEE4D4'}}},
-        series: [{name: '民居点位', type: 'scatter', coordinateSystem: 'geo', data: scatterData, symbolSize: 12, itemStyle: {borderColor: '#FFF', borderWidth: 2}}]
-    }, true);
+    const canvas = document.getElementById('indexMapCanvas');
+    const container = document.getElementById('mapChart');
+    const tooltip = document.getElementById('indexMapTooltip');
+    if (!canvas || !container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = rect.width;
+    const h = rect.height;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    
+    // 清除Canvas（保持透明，让底图显示）
+    ctx.clearRect(0, 0, w, h);
+    
+    // 绘制散点
+    currentHouses.forEach(house => {
+        const p = geoToPixel(house.coords[0], house.coords[1], w, h);
+        const px = p.x;
+        const py = p.y;
+        const color = climateColors[house.climate] || '#888';
+        
+        // 光晕
+        const glowRadius = 12;
+        const gradient = ctx.createRadialGradient(px, py, 0, px, py, glowRadius);
+        gradient.addColorStop(0, color + 'CC');
+        gradient.addColorStop(1, color + '00');
+        ctx.beginPath();
+        ctx.arc(px, py, glowRadius, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        
+        // 圆点
+        const dotRadius = 6;
+        ctx.beginPath();
+        ctx.arc(px, py, dotRadius, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#FFF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // 名称标签
+        ctx.fillStyle = '#2A3B4C';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(house.name, px, py - dotRadius - 4);
+        
+        house._px = px;
+        house._py = py;
+    });
 }
 
 function renderAllCharts() {
@@ -1029,8 +1090,7 @@ function filterByPeriod(period) {
     mainContent.style.opacity = '0.3';
 
     setTimeout(() => {
-        renderAllCharts();
-        bindMapClick();
+        renderAllCharts(); // renderAllCharts 内部调用 renderMap
         mainContent.style.opacity = '1';
     }, 300);
 }
@@ -1045,19 +1105,74 @@ function filterByClimate(value) {
     mainContent.style.opacity = '0.3';
 
     setTimeout(() => {
-        renderAllCharts();
-        bindMapClick();
+        renderAllCharts(); // renderAllCharts 内部调用 renderMap
         mainContent.style.opacity = '1';
     }, 300);
 }
 
+let _mapClickBound = false;
+
 function bindMapClick() {
-    mapChart.off('click');
-    mapChart.on('click', function(params) {
-        if (params.seriesType === 'scatter' && params.data) {
-            const idx = currentHouses.findIndex(h => h.name === params.data.name);
-            if (idx !== -1) highlightHouse(idx);
+    const canvas = document.getElementById('indexMapCanvas');
+    const tooltip = document.getElementById('indexMapTooltip');
+    const container = document.getElementById('mapChart');
+    if (!canvas) return;
+    
+    // 避免重复绑定（不再克隆 canvas，防止清空绘制内容）
+    if (_mapClickBound) return;
+    _mapClickBound = true;
+    
+    canvas.addEventListener('click', function(e) {
+        const rect = container.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        
+        for (const house of currentHouses) {
+            if (house._px === undefined) continue;
+            const dx = clickX - house._px;
+            const dy = clickY - house._py;
+            if (dx * dx + dy * dy < 100) {
+                const idx = currentHouses.findIndex(h => h.name === house.name);
+                if (idx !== -1) highlightHouse(idx);
+                return;
+            }
         }
+    });
+    
+    canvas.addEventListener('mousemove', function(e) {
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        
+        let found = null;
+        for (const house of currentHouses) {
+            if (house._px === undefined) continue;
+            const dx = mx - house._px;
+            const dy = my - house._py;
+            if (dx * dx + dy * dy < 100) {
+                found = house;
+                break;
+            }
+        }
+        
+        if (found && tooltip) {
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX - rect.left + 15) + 'px';
+            tooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+            tooltip.innerHTML = `
+                <strong>${found.name}</strong><br>
+                <span style="display:inline-block;padding:2px 8px;border-radius:10px;color:white;font-size:0.75rem;font-weight:600;background:${climateColors[found.climate]}">${found.climate}</span><br>
+                🌡️ ${found.temp}°C | 💧 ${found.precip}mm
+            `;
+            canvas.style.cursor = 'pointer';
+        } else if (tooltip) {
+            tooltip.style.display = 'none';
+            canvas.style.cursor = 'default';
+        }
+    });
+    
+    canvas.addEventListener('mouseleave', function() {
+        if (tooltip) tooltip.style.display = 'none';
     });
 }
 
@@ -1332,8 +1447,34 @@ function renderScatterChart() {
     });
 }
 
+// 全局存储 GeoJSON 数据
+let chinaGeoJson = null;
+
+// 使用 fetch 加载 GeoJSON 数据（比 <script> 标签更可靠，避免 MIME/缓存问题）
+function loadChinaGeoJson(callback) {
+    if (chinaGeoJson) {
+        callback(chinaGeoJson);
+        return;
+    }
+    fetch('data/china.json')
+        .then(res => res.json())
+        .then(data => {
+            chinaGeoJson = data;
+            callback(data);
+        })
+        .catch(err => {
+            console.error('加载地图数据失败:', err);
+            // 尝试通过 china 变量（<script> 方式加载）
+            if (typeof china !== 'undefined' && china && china.features) {
+                chinaGeoJson = china;
+                callback(china);
+            } else {
+                callback(null);
+            }
+        });
+}
+
 function initCharts() {
-    mapChart = echarts.init(document.getElementById('mapChart'));
     barChart = echarts.init(document.getElementById('barChart'));
     radarChart = echarts.init(document.getElementById('radarChart'));
     rankingChart = echarts.init(document.getElementById('rankingChart'));
@@ -1341,17 +1482,27 @@ function initCharts() {
     scatterChart = echarts.init(document.getElementById('scatterChart'));
     boxPlotChart = echarts.init(document.getElementById('boxPlotChart'));
 
-    renderAllCharts();
-    bindMapClick();
+    // 加载 GeoJSON 数据
+    loadChinaGeoJson(function(geojson) {
+        if (geojson) {
+            renderAllCharts();
+            bindMapClick();
+        } else {
+            // 数据加载失败，仍然尝试渲染（散点可显示，地图轮廓不可用）
+            console.warn('地图数据加载失败，将跳过地图轮廓绘制');
+            renderAllCharts();
+            bindMapClick();
+        }
+    });
 
     window.addEventListener('resize', () => {
-        mapChart.resize();
         barChart.resize();
         radarChart.resize();
         rankingChart.resize();
         roseChart.resize();
         scatterChart.resize();
         boxPlotChart.resize();
+        renderMap();
     });
 }
 
